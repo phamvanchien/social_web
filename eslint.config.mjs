@@ -20,6 +20,12 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    files: ["**/*.{ts,tsx}"], // chỉ áp dụng cho file TS
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off", // ⬅️ TẮT RULE NÀY
+    },
+  },
 ];
 
 export default eslintConfig;
