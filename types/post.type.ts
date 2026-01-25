@@ -14,6 +14,7 @@ export interface ResponsePostItem {
   share: number
   created_at: string
   user: UserPost
+  userLiked: boolean
   files: [
     {
       id: number

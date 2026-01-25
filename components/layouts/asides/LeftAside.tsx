@@ -21,7 +21,7 @@ const LeftAside = () => {
         <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full overflow-hidden">
-              <img src="/images/test/avatar.png" alt="user" className="w-full h-full object-cover" />
+              <img src={userLogged?.avatar ?? ''} alt="user" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="text-[15px] font-semibold leading-tight">{userLogged?.first_name} {userLogged?.last_name}</div>

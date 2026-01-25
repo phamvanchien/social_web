@@ -11,7 +11,8 @@ export const APP_CONFIG: AppConfigType = {
       authenticate: '/authenticate',
       google: '/google',
       google_callback: '/google/callback',
-      post: '/post'
+      post: '/post',
+      comments: '/comments'
     }
   }
 }

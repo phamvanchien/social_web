@@ -79,7 +79,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
         {/* Top user row */}
         <div className="flex items-center justify-between pb-4 border-b border-gray-200/70 mt-4">
           <div className="flex items-center gap-3">
-            <img src="/images/test/avatar.png" alt="me" className="w-10 h-10 rounded-full object-cover" />
+            <img src={userLogged?.avatar} alt="me" className="w-10 h-10 rounded-full object-cover" />
             <div className="leading-tight">
               <div className="text-[15px] font-semibold">{userLogged?.first_name} {userLogged?.last_name}</div>
             </div>

@@ -48,9 +48,9 @@ export default function Header() {
               <div className="w-full max-w-[720px]">
                 <Input
                   size="lg"
-                  placeholder="Tìm kiếm bạn bè!"
+                  placeholder="Tìm kiếm lacial..."
                   leftIcon={<Search className="w-5 h-5" />}
-                  className="rounded-full border-gray-300 bg-white shadow-none"
+                  className="rounded-full border-gray-200 bg-gray-50 shadow-none focus:bg-white focus:border-gray-300"
                 />
               </div>
             </div>
@@ -71,7 +71,7 @@ export default function Header() {
               >
                 <Bell className="w-5 h-5" />
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-[18px] text-center shadow">
-                  18
+                  3
                 </span>
               </button>
 

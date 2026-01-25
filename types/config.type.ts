@@ -12,6 +12,7 @@ export interface AppConfigType {
       google: string,
       google_callback: string
       post: string
+      comments: string
     }
   }
 }
