@@ -11,6 +11,7 @@ export interface ResponseCommentItem {
   like: number
   createdAt: string
   repliesCount: number
+  userLiked: boolean
   user: CommentUser
 }
 

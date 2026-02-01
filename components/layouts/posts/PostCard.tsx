@@ -3,11 +3,12 @@
 import IconComment from "@/components/icons/IconComment";
 import IconHeart from "@/components/icons/IconHeart";
 import IconShare from "@/components/icons/IconShare";
+import SharePopup from "@/components/common/SharePopup";
 import { useSocket } from "@/hooks/socket";
 import { RootState } from "@/reduxs/store.redux";
 import { ResponsePostItem, UserPost } from "@/types/post.type";
 import { ResponseCommentItem, CommentSortType } from "@/types/comment.type";
-import { createComment, getCommentsByPostId, getCommentCount, getCommentReplies } from "@/api/comment.api";
+import { getCommentsByPostId, getCommentCount, getCommentReplies } from "@/api/comment.api";
 import Image from "next/image";
 import {
   Globe,
@@ -34,11 +35,11 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const user: UserPost = post.user;
   const fullName = user ? `${user.first_name} ${user.last_name}` : "Người dùng";
   const media = (post.files || []).map((f) => f.url).filter(Boolean);
-  const moreCount = Math.max(0, media.length - 4);
   const userLogged = useSelector((state: RootState) => state.userSlice).data;
   const heartActiveColor = "oklch(63.7% .237 25.331)";
   const socket = useSocket();
   const [liked, setLiked] = useState(post.userLiked);
+  const [likeCount, setLikeCount] = useState(post.like ?? 0);
   const [isHeartBouncing, setIsHeartBouncing] = useState(false);
   const bounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [galleryZoom, setGalleryZoom] = useState(1);
@@ -49,10 +50,22 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
     return n.toString();
   };
-  const likeDisplayCount = useMemo(
-    () => Math.max(0, (post.like ?? 0) + (liked ? 1 : 0)),
-    [post.like, liked]
-  );
+  // Listen for realtime like updates from server
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLikeUpdated = (data: { postId: number; likeCount: number }) => {
+      if (data.postId === post.id) {
+        setLikeCount(data.likeCount);
+      }
+    };
+
+    socket.on('post_like_updated', handleLikeUpdated);
+
+    return () => {
+      socket.off('post_like_updated', handleLikeUpdated);
+    };
+  }, [socket, post.id]);
 
   const escapeHtml = (str: string) =>
     str
@@ -69,6 +82,10 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   // Comments state
@@ -102,6 +119,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Share popup state
+  const [showSharePopup, setShowSharePopup] = useState(false);
+
   // Fetch comment count on mount
   useEffect(() => {
     const fetchCount = async () => {
@@ -113,18 +133,104 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     fetchCount();
   }, [post.id]);
 
+  // Listen for realtime comment updates from server
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCommentCreated = (data: {
+      postId: number;
+      comment: ResponseCommentItem;
+      commentCount: number;
+      parentId: number | null;
+    }) => {
+      if (data.postId === post.id) {
+        // Update comment count
+        setCommentCount(data.commentCount);
+
+        // Only add comment to list if comments section is open
+        if (isCommentsOpen) {
+          if (data.parentId) {
+            // It's a reply - add to expanded replies if that comment is expanded
+            setExpandedReplies((prev) => {
+              if (prev[data.parentId!]) {
+                // Check if reply already exists to avoid duplicates
+                const exists = prev[data.parentId!].some((r) => r.id === data.comment.id);
+                if (exists) return prev;
+                return {
+                  ...prev,
+                  [data.parentId!]: [data.comment, ...prev[data.parentId!]],
+                };
+              }
+              return prev;
+            });
+
+            // Update reply count for parent comment
+            setComments((prev) =>
+              prev.map((c) =>
+                c.id === data.parentId
+                  ? { ...c, repliesCount: (c.repliesCount || 0) + 1 }
+                  : c
+              )
+            );
+          } else {
+            // It's a top-level comment - add to comments list
+            setComments((prev) => {
+              // Check if comment already exists to avoid duplicates
+              const exists = prev.some((c) => c.id === data.comment.id);
+              if (exists) return prev;
+              return [data.comment, ...prev];
+            });
+          }
+        }
+      }
+    };
+
+    socket.on('comment_created', handleCommentCreated);
+
+    return () => {
+      socket.off('comment_created', handleCommentCreated);
+    };
+  }, [socket, post.id, isCommentsOpen]);
+
+  // Listen for realtime comment like updates from server
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCommentLikeUpdated = (data: { commentId: number; likeCount: number }) => {
+      // Update like count in commentLikeCounts state
+      setCommentLikeCounts((prev) => ({
+        ...prev,
+        [data.commentId]: data.likeCount,
+      }));
+    };
+
+    socket.on('comment_like_updated', handleCommentLikeUpdated);
+
+    return () => {
+      socket.off('comment_like_updated', handleCommentLikeUpdated);
+    };
+  }, [socket]);
+
   // Fetch comments when section opens
   const fetchComments = async (page: number = 1, sort: CommentSortType = commentSort) => {
     setCommentsLoading(true);
     const response = await getCommentsByPostId({ postId: post.id, page, size: 10, sort });
     if (response?.code === 200) {
+      const items = response.data.items;
       if (page === 1) {
-        setComments(response.data.items);
+        setComments(items);
       } else {
-        setComments((prev) => [...prev, ...response.data.items]);
+        setComments((prev) => [...prev, ...items]);
       }
       setHasMoreComments(page < response.data.totalPage);
       setCommentsPage(page);
+
+      // Initialize likedComments state from API response
+      const newLikedComments: Record<number, boolean> = {};
+      items.forEach((comment: ResponseCommentItem) => {
+        newLikedComments[comment.id] = comment.userLiked;
+      });
+      setLikedComments((prev) => ({ ...prev, ...newLikedComments }));
     }
     setCommentsLoading(false);
   };
@@ -171,20 +277,20 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     };
   }, [isSortDropdownOpen]);
 
-  const handleSubmitComment = async () => {
-    if (!commentText.trim() || isSubmitting) return;
+  const handleSubmitComment = () => {
+    if (!commentText.trim() || isSubmitting || !socket) return;
 
     setIsSubmitting(true);
-    const response = await createComment({
+
+    // Emit socket event to create comment
+    socket.emit('new_comment', {
+      userId: userLogged?.id,
       postId: post.id,
       content: commentText.trim(),
     });
 
-    if (response?.code === 201) {
-      setComments((prev) => [response.data, ...prev]);
-      setCommentCount((prev) => prev + 1);
-      setCommentText("");
-    }
+    // Clear input immediately (comment will be added via socket listener)
+    setCommentText("");
     setIsSubmitting(false);
   };
 
@@ -207,44 +313,30 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setReplyText("");
   };
 
-  const handleSubmitReply = async () => {
-    if (!replyText.trim() || isSubmittingReply || !replyingTo) return;
+  const handleSubmitReply = () => {
+    if (!replyText.trim() || isSubmittingReply || !replyingTo || !socket) return;
 
     setIsSubmittingReply(true);
-    const response = await createComment({
+
+    // Emit socket event to create reply
+    socket.emit('new_comment', {
+      userId: userLogged?.id,
       postId: post.id,
       content: replyText.trim(),
       parentId: replyingTo.id,
     });
 
-    if (response?.code === 201) {
-      // Update repliesCount for the parent comment
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === replyingTo.id
-            ? { ...c, repliesCount: c.repliesCount + 1 }
-            : c
-        )
-      );
-      setCommentCount((prev) => prev + 1);
-
-      // Add new reply to expanded replies list if it's open
-      if (expandedReplies[replyingTo.id]) {
-        setExpandedReplies((prev) => ({
-          ...prev,
-          [replyingTo.id]: [...(prev[replyingTo.id] || []), response.data],
-        }));
-      } else {
-        // Auto expand replies to show the new reply
-        setExpandedReplies((prev) => ({
-          ...prev,
-          [replyingTo.id]: [response.data],
-        }));
-      }
-
-      setReplyText("");
-      setReplyingTo(null);
+    // Auto expand replies to show the new reply (if not already expanded)
+    if (!expandedReplies[replyingTo.id]) {
+      setExpandedReplies((prev) => ({
+        ...prev,
+        [replyingTo.id]: [],
+      }));
     }
+
+    // Clear input immediately (reply will be added via socket listener)
+    setReplyText("");
+    setReplyingTo(null);
     setIsSubmittingReply(false);
   };
 
@@ -263,14 +355,22 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     setLoadingReplies((prev) => ({ ...prev, [commentId]: true }));
     const response = await getCommentReplies({ commentId, page, size: 5 });
     if (response?.code === 200) {
+      const items = response.data.items;
       setExpandedReplies((prev) => ({
         ...prev,
         [commentId]: page === 1
-          ? response.data.items
-          : [...(prev[commentId] || []), ...response.data.items],
+          ? items
+          : [...(prev[commentId] || []), ...items],
       }));
       setRepliesPage((prev) => ({ ...prev, [commentId]: page }));
       setHasMoreReplies((prev) => ({ ...prev, [commentId]: page < response.data.totalPage }));
+
+      // Initialize likedComments state for replies from API response
+      const newLikedComments: Record<number, boolean> = {};
+      items.forEach((reply: ResponseCommentItem) => {
+        newLikedComments[reply.id] = reply.userLiked;
+      });
+      setLikedComments((prev) => ({ ...prev, ...newLikedComments }));
     }
     setLoadingReplies((prev) => ({ ...prev, [commentId]: false }));
   };
@@ -436,9 +536,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       {/* Media */}
       {media.length === 0 ? null : media.length === 1 ? (
-        // 👉 Một ảnh: full width
+        // 👉 Một ảnh: full width, aspect-square như Instagram
         <div
-          className="relative w-full bg-gray-100 aspect-[4/5] cursor-zoom-in"
+          className="relative w-full bg-black aspect-square cursor-zoom-in"
           onClick={() => openGallery(0)}
         >
           <Image
@@ -446,85 +546,109 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             alt="post"
             fill
             sizes="(min-width: 768px) 720px, 100vw"
-            className="object-cover"
+            className="object-contain"
           />
         </div>
-      ) : media.length === 2 ? (
-        // 👉 Hai ảnh: chia đôi mỗi ảnh 50%
-        <div className="flex w-full bg-gray-100">
-          {media.slice(0, 2).map((url, i) => (
-            <div
-              key={i}
-              className="relative w-1/2 aspect-square overflow-hidden cursor-zoom-in"
-              onClick={() => openGallery(i)}
-            >
-              <Image
-                src={url}
-                alt={`media-${i}`}
-                fill
-                sizes="(min-width: 768px) 360px, 50vw"
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
       ) : (
-        // 👉 Từ 3 ảnh trở lên: hiển thị dạng lưới
-        <div className="bg-black/5">
-          <div className="grid grid-cols-3 grid-rows-3 gap-1 h-[520px] bg-gray-100">
+        // 👉 Nhiều ảnh: Carousel vuốt ngang như Instagram
+        <div className="relative bg-black">
+          {/* Carousel Container - Fixed square aspect ratio */}
+          <div
+            ref={carouselRef}
+            className="relative w-full aspect-square overflow-hidden"
+            onTouchStart={(e) => {
+              touchStartX.current = e.touches[0].clientX;
+            }}
+            onTouchMove={(e) => {
+              touchEndX.current = e.touches[0].clientX;
+            }}
+            onTouchEnd={() => {
+              const diff = touchStartX.current - touchEndX.current;
+              const threshold = 50;
+              if (diff > threshold && carouselIndex < media.length - 1) {
+                setCarouselIndex((prev) => prev + 1);
+              } else if (diff < -threshold && carouselIndex > 0) {
+                setCarouselIndex((prev) => prev - 1);
+              }
+            }}
+          >
             <div
-              className="relative col-span-2 row-span-3 overflow-hidden cursor-zoom-in"
-              onClick={() => openGallery(0)}
+              className="absolute inset-0 flex transition-transform duration-300 ease-out"
+              style={{
+                width: `${media.length * 100}%`,
+                transform: `translateX(-${carouselIndex * (100 / media.length)}%)`
+              }}
             >
-              <Image
-                src={media[0]}
-                alt="media-0"
-                fill
-                sizes="(min-width: 1024px) 620px, 66vw"
-                className="object-cover"
-              />
-            </div>
-            <div
-              className="relative overflow-hidden cursor-zoom-in"
-              onClick={() => openGallery(1)}
-            >
-              <Image
-                src={media[1]}
-                alt="media-1"
-                fill
-                sizes="(min-width: 1024px) 300px, 33vw"
-                className="object-cover"
-              />
-            </div>
-            <div
-              className="relative overflow-hidden cursor-zoom-in"
-              onClick={() => openGallery(2)}
-            >
-              <Image
-                src={media[2] ?? media[1]}
-                alt="media-2"
-                fill
-                sizes="(min-width: 1024px) 300px, 33vw"
-                className="object-cover"
-              />
-            </div>
-            <div
-              className="relative overflow-hidden cursor-zoom-in"
-              onClick={() => openGallery(3)}
-            >
-              <Image
-                src={media[3] ?? media[2] ?? media[1]}
-                alt="media-3"
-                fill
-                sizes="(min-width: 1024px) 300px, 33vw"
-                className="object-cover"
-              />
-              {moreCount > 0 && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white text-3xl font-semibold">+{moreCount}</span>
+              {media.map((url, i) => (
+                <div
+                  key={i}
+                  className="relative h-full cursor-zoom-in"
+                  style={{ width: `${100 / media.length}%` }}
+                  onClick={() => openGallery(i)}
+                >
+                  <Image
+                    src={url}
+                    alt={`media-${i}`}
+                    fill
+                    sizes="(min-width: 768px) 720px, 100vw"
+                    className="object-contain"
+                  />
                 </div>
-              )}
+              ))}
             </div>
+          </div>
+
+          {/* Navigation Arrows */}
+          {carouselIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCarouselIndex((prev) => Math.max(0, prev - 1));
+              }}
+              aria-label="Ảnh trước"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+          )}
+          {carouselIndex < media.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCarouselIndex((prev) => Math.min(media.length - 1, prev + 1));
+              }}
+              aria-label="Ảnh tiếp"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-700" />
+            </button>
+          )}
+
+          {/* Dots Indicator */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+            {media.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  i === carouselIndex
+                    ? "bg-blue-500 w-2 h-2"
+                    : "bg-white/70 hover:bg-white"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarouselIndex(i);
+                }}
+                aria-label={`Xem ảnh ${i + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* Counter Badge */}
+          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded-full">
+            {carouselIndex + 1}/{media.length}
           </div>
         </div>
       )}
@@ -545,7 +669,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               />
             </span>
             <span className="text-[14px] text-gray-700 font-medium">
-              {formatCount(likeDisplayCount)}
+              {formatCount(likeCount)}
             </span>
           </button>
 
@@ -557,10 +681,21 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <span className="text-[14px] font-medium">{formatCount(commentCount)}</span>
           </button>
 
-          <button className="flex items-center gap-1.5 text-gray-600 cursor-pointer group">
-            <IconShare className="w-6 h-6" />
-            <span className="text-[14px] font-medium">{formatCount(post.share ?? 0)}</span>
-          </button>
+          <div className="relative">
+            <button
+              className="flex items-center gap-1.5 text-gray-600 cursor-pointer group"
+              onClick={() => setShowSharePopup(!showSharePopup)}
+            >
+              <IconShare className="w-6 h-6" />
+              <span className="text-[14px] font-medium">{formatCount(post.share ?? 0)}</span>
+            </button>
+            <SharePopup
+              open={showSharePopup}
+              onClose={() => setShowSharePopup(false)}
+              postId={post.id}
+              postContent={post.content}
+            />
+          </div>
         </div>
 
         {/* Right side: bookmark */}

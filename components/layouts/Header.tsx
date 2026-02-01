@@ -1,20 +1,28 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Bell, Plus, Search } from "lucide-react";
-import Input from "@/components/common/Input";
+import { useEffect, useRef, useState } from "react";
+import { Bell, Plus, Search, User, Settings, HelpCircle, LogOut, Menu, X, Clock, TrendingUp } from "lucide-react";
 import CreatePost from "./posts/CreatePost";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/reduxs/store.redux";
-import { getCookie } from "@/utils/cookie.utils";
+import { getCookie, removeCookie } from "@/utils/cookie.utils";
 import { APP_AUTH } from "@/enums/app.enum";
 import { setUser } from "@/reduxs/user.redux";
+import Image from "next/image";
+import Link from "next/link";
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+  onSearchClick?: () => void;
+}
+
+export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
   const dispatch = useAppDispatch();
   const userLogged = useSelector((state: RootState) => state.userSlice).data;
 
   const [open, setOpen] = useState(false);
   const [userData, setUserData] = useState(userLogged);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const userAuth = getCookie(APP_AUTH.COOKIE_AUTH_USER);
@@ -30,55 +38,280 @@ export default function Header() {
     }
   }, [userLogged]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const handleLogout = () => {
+    removeCookie(APP_AUTH.COOKIE_AUTH_KEY);
+    removeCookie(APP_AUTH.COOKIE_AUTH_USER);
+    window.location.href = "/login";
+  };
+
+  const fullName = userData ? `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : '';
+
   return (
     <>
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200/60">
-        <div className="mx-auto max-w-[1200px] px-4">
-          <div className="h-14 flex items-center gap-4">
-            {/* Left: Logo */}
-            <a className="flex items-center" href="#" aria-label="Home">
-              <div className="w-9 h-9 rounded-full bg-[#0C8BDA] text-white flex items-center justify-center font-semibold text-[10px] shadow">
-                lacial
-              </div>
-            </a>
-
-            {/* Center: Search */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-full max-w-[720px]">
-                <Input
-                  size="lg"
-                  placeholder="Tìm kiếm lacial..."
-                  leftIcon={<Search className="w-5 h-5" />}
-                  className="rounded-full border-gray-200 bg-gray-50 shadow-none focus:bg-white focus:border-gray-300"
-                />
-              </div>
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="w-full px-4 md:px-6">
+          {/* Mobile Header */}
+          <div className="flex lg:hidden items-center justify-between h-14">
+            {/* Left: Menu + Logo */}
+            <div className="flex items-center gap-2">
+              <button
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                onClick={onMenuClick}
+                aria-label="Menu"
+              >
+                <Menu className="w-6 h-6 text-gray-600" />
+              </button>
+              <Link className="flex items-center" href="/" aria-label="Home">
+                <div className="w-10 h-10 rounded-full bg-[#2196F3] text-white flex items-center justify-center font-bold text-[11px] tracking-tight">
+                  lokasa
+                </div>
+              </Link>
             </div>
 
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
+              {/* Search Button */}
               <button
-                className="cursor-pointer relative w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center"
-                title="Thêm"
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                onClick={onSearchClick}
+                aria-label="Tìm kiếm"
+              >
+                <Search className="w-5 h-5 text-gray-600" />
+              </button>
+
+              {/* Add Button */}
+              <button
+                className="w-10 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 flex items-center justify-center transition"
+                title="Tạo bài viết"
                 onClick={() => setOpen(true)}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-5 h-5" strokeWidth={2} />
               </button>
+
+              {/* Notification Button */}
               <button
-                className="relative w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center"
+                className="relative w-10 h-10 rounded-full bg-white hover:bg-gray-50 text-gray-600 flex items-center justify-center transition"
                 title="Thông báo"
                 aria-label="Thông báo"
               >
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] leading-[18px] text-center shadow">
-                  3
+                <Bell className="w-6 h-6" strokeWidth={1.5} />
+                <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[11px] font-medium flex items-center justify-center">
+                  18+
                 </span>
               </button>
 
-              <div className="ml-1">
-                <div className="w-9 h-9 rounded-full overflow-hidden ring-1 ring-gray-200">
-                  <img src={userData?.avatar} alt="me" className="w-full h-full object-cover" />
+              {/* User Avatar */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-100 cursor-pointer focus:outline-none focus:ring-blue-300"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <Image
+                    src={userData?.avatar || "/images/default-avatar.png"}
+                    alt="Avatar"
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-gray-100 flex-shrink-0">
+                          <Image
+                            src={userData?.avatar || "/images/default-avatar.png"}
+                            alt="Avatar"
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[15px] text-gray-900 truncate">
+                            {fullName || "Người dùng"}
+                          </p>
+                          <p className="text-[13px] text-gray-500 truncate">
+                            {userData?.email || ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="py-2">
+                      <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Trang cá nhân</span>
+                      </Link>
+                      <Link href="/settings" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Settings className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Cài đặt & quyền riêng tư</span>
+                      </Link>
+                      <Link href="/help" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <HelpCircle className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Trợ giúp & hỗ trợ</span>
+                      </Link>
+                    </div>
+                    <div className="border-t border-gray-100 pt-2">
+                      <button className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition text-left" onClick={handleLogout}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <LogOut className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Đăng xuất</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header - Grid aligned with main content */}
+          <div className="hidden lg:grid grid-cols-12 gap-6 max-w-[1400px] mx-auto h-14 items-center">
+            {/* Left: Logo - col-span-3 */}
+            <div className="col-span-3 flex items-center">
+              <Link className="flex items-center" href="/" aria-label="Home">
+                <div className="w-10 h-10 rounded-full bg-[#2196F3] text-white flex items-center justify-center font-bold text-[11px] tracking-tight">
+                  lokasa
                 </div>
+              </Link>
+            </div>
+
+            {/* Center: Search - col-span-6 (aligned with post content) */}
+            <div className="col-span-6 flex items-center justify-center">
+              <div className="w-full">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm lokasa..."
+                    className="w-full h-10 pl-5 pr-12 rounded-full bg-gray-100 border-0 text-[15px] text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition"
+                  >
+                    <Search className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Actions - col-span-3 */}
+            <div className="col-span-3 flex items-center justify-end gap-3">
+              {/* Add Button */}
+              <button
+                className="w-10 h-10 rounded-full border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 flex items-center justify-center transition"
+                title="Tạo bài viết"
+                onClick={() => setOpen(true)}
+              >
+                <Plus className="w-5 h-5" strokeWidth={2} />
+              </button>
+
+              {/* Notification Button */}
+              <button
+                className="relative w-10 h-10 rounded-full bg-white hover:bg-gray-50 text-gray-600 flex items-center justify-center transition"
+                title="Thông báo"
+                aria-label="Thông báo"
+              >
+                <Bell className="w-6 h-6" strokeWidth={1.5} />
+                <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[11px] font-medium flex items-center justify-center">
+                  18+
+                </span>
+              </button>
+
+              {/* User Avatar with Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-100 cursor-pointer focus:outline-none focus:ring-blue-300"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <Image
+                    src={userData?.avatar || "/images/default-avatar.png"}
+                    alt="Avatar"
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-gray-100 flex-shrink-0">
+                          <Image
+                            src={userData?.avatar || "/images/default-avatar.png"}
+                            alt="Avatar"
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[15px] text-gray-900 truncate">
+                            {fullName || "Người dùng"}
+                          </p>
+                          <p className="text-[13px] text-gray-500 truncate">
+                            {userData?.email || ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="py-2">
+                      <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Trang cá nhân</span>
+                      </Link>
+                      <Link href="/settings" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <Settings className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Cài đặt & quyền riêng tư</span>
+                      </Link>
+                      <Link href="/help" className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition" onClick={() => setIsDropdownOpen(false)}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <HelpCircle className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Trợ giúp & hỗ trợ</span>
+                      </Link>
+                    </div>
+                    <div className="border-t border-gray-100 pt-2">
+                      <button className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-gray-50 transition text-left" onClick={handleLogout}>
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                          <LogOut className="w-5 h-5 text-gray-600" />
+                        </div>
+                        <span className="text-[15px] text-gray-800">Đăng xuất</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -88,4 +321,3 @@ export default function Header() {
     </>
   );
 }
-

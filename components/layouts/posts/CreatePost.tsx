@@ -1,6 +1,7 @@
 "use client";
 import Button from "@/components/common/Button";
 import { Modal } from "@/components/common/Modal";
+import EmojiPicker from "@/components/common/EmojiPicker";
 import { Calendar, ChevronDown, Globe, ImagePlus, MapPin, Smile, Lock, X, Users, Check } from "lucide-react";
 import React, { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { createPost } from "@/api/post.api";
@@ -35,6 +36,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleEmojiSelect = (emoji: string) => {
+    setContent((prev) => prev + emoji);
+  };
 
   useEffect(() => {
     const urls = images.map((f) => URL.createObjectURL(f));
@@ -81,7 +87,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
           <div className="flex items-center gap-3">
             <img src={userLogged?.avatar} alt="me" className="w-10 h-10 rounded-full object-cover" />
             <div className="leading-tight">
-              <div className="text-[15px] font-semibold">{userLogged?.first_name} {userLogged?.last_name}</div>
+              <div className="text-[15px] font-semibold text-gray-900">{userLogged?.first_name} {userLogged?.last_name}</div>
             </div>
           </div>
 
@@ -142,9 +148,21 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
               >
                 <ImagePlus className="w-6 h-6" />
               </button>
-              <span title="Cảm xúc" className="text-amber-500">
-                <Smile className="w-6 h-6" />
-              </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  title="Cảm xúc"
+                  className="cursor-pointer text-amber-500"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                >
+                  <Smile className="w-6 h-6" />
+                </button>
+                <EmojiPicker
+                  open={showEmojiPicker}
+                  onClose={() => setShowEmojiPicker(false)}
+                  onSelect={handleEmojiSelect}
+                />
+              </div>
               <span title="Sự kiện" className="text-green-600">
                 <Calendar className="w-6 h-6" />
               </span>

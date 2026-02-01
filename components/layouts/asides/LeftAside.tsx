@@ -2,9 +2,9 @@
 import {
   MapPin,
   Home,
-  MessageSquare,
+  MessageCircle,
   Users,
-  Video,
+  Play,
   Bookmark,
   Gift,
   HelpCircle,
@@ -13,11 +13,18 @@ import {
   Smile,
   BookOpen,
   ShoppingBag,
+  X,
 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
-const LeftAside = () => {
-  const [topicsExpanded, setTopicsExpanded] = useState(false);
+interface LeftAsideProps {
+  isMobile?: boolean;
+  onClose?: () => void;
+}
+
+const LeftAside = ({ isMobile, onClose }: LeftAsideProps) => {
+  const [topicsExpanded, setTopicsExpanded] = useState(true);
   const [expandedTopics, setExpandedTopics] = useState<string[]>([]);
 
   const toggleTopic = (topic: string) => {
@@ -28,152 +35,188 @@ const LeftAside = () => {
     );
   };
 
+  const handleLinkClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="col-span-12 lg:col-span-3">
-      <div className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-1">
-        <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-3">
-          {/* Location */}
-          <div className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-blue-100 hover:bg-blue-200 rounded-lg cursor-pointer transition">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500">
-              <MapPin className="w-5 h-5 text-white" />
+    <aside className={isMobile ? "h-full flex flex-col" : "col-span-12 lg:col-span-3"}>
+      {/* Mobile Header */}
+      {isMobile && (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <Link href="/" className="flex items-center gap-2" onClick={handleLinkClick}>
+            <div className="w-8 h-8 rounded-full bg-[#2196F3] text-white flex items-center justify-center font-bold text-[9px] tracking-tight">
+              lokasa
             </div>
-            <div className="flex-1">
-              <div className="text-[15px] font-semibold text-blue-700">P.5 Hồ Chí Minh</div>
-            </div>
-            <ChevronDown className="w-4 h-4 text-blue-600" />
+            <span className="font-semibold text-gray-800">Menu</span>
+          </Link>
+          <button
+            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
+            onClick={onClose}
+            aria-label="Đóng menu"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      )}
+
+      <div className={`${isMobile ? "flex-1 overflow-y-auto px-2 py-2" : "sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto"}`}>
+        {/* Location */}
+        <div className="flex items-center gap-3 px-2 py-3 cursor-pointer group">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500">
+            <MapPin className="w-5 h-5 text-white" />
           </div>
+          <span className="text-[15px] font-medium text-blue-600">P.5 Hồ Chí Minh</span>
+          <ChevronDown className="w-4 h-4 text-blue-600" />
+        </div>
 
-          <div className="border-t border-gray-200 my-3"></div>
-
-          {/* Main Menu */}
-          <ul className="space-y-0">
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <Home className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Đề xuất</span>
+        {/* Main Menu */}
+        <nav className="mt-2">
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <Home className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                <span className="text-[15px] text-gray-800">Đề xuất</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="relative flex items-center justify-center w-9 h-9">
-                <MessageSquare className="w-5 h-5 text-gray-700" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  3+
-                </span>
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Tin nhắn</span>
+            <li>
+              <Link
+                href="/messages"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <div className="relative">
+                  <MessageCircle className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    3+
+                  </span>
+                </div>
+                <span className="text-[15px] text-gray-800">Tin nhắn</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <Users className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Bạn bè</span>
+            <li>
+              <Link
+                href="/friends"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <Users className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                <span className="text-[15px] text-gray-800">Bạn bè</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <Video className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Pings</span>
+            <li>
+              <Link
+                href="/pings"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <div className="w-6 h-6 border-2 border-gray-600 rounded flex items-center justify-center">
+                  <Play className="w-3 h-3 text-gray-600 ml-0.5" fill="currentColor" />
+                </div>
+                <span className="text-[15px] text-gray-800">Pings</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <Bookmark className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Tin đã lưu</span>
+            <li>
+              <Link
+                href="/saved"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <Bookmark className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                <span className="text-[15px] text-gray-800">Tin đã lưu</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <Gift className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Sinh nhật</span>
+            <li>
+              <Link
+                href="/birthdays"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <Gift className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                <span className="text-[15px] text-gray-800">Sinh nhật</span>
+              </Link>
             </li>
 
-            <li className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-gray-50 cursor-pointer transition">
-              <div className="flex items-center justify-center w-9 h-9">
-                <HelpCircle className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-[15px] font-medium text-gray-800">Trợ giúp</span>
+            <li>
+              <Link
+                href="/help"
+                className="flex items-center gap-4 px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                onClick={handleLinkClick}
+              >
+                <HelpCircle className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                <span className="text-[15px] text-gray-800">Trợ giúp</span>
+              </Link>
             </li>
           </ul>
+        </nav>
 
-          <div className="border-t border-gray-200 my-3"></div>
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-4 mx-2"></div>
 
-          {/* Topics Section */}
-          <div>
-            <div
-              className="flex items-center justify-between px-2 py-2.5 hover:bg-gray-50 rounded-lg cursor-pointer transition"
-              onClick={() => setTopicsExpanded(!topicsExpanded)}
-            >
-              <span className="text-[15px] font-semibold text-gray-800">Chủ đề</span>
-              {topicsExpanded ? (
-                <ChevronUp className="w-4 h-4 text-gray-600" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-600" />
-              )}
-            </div>
-
-            {topicsExpanded && (
-              <ul className="mt-1 space-y-0">
-                {/* Văn hóa - Giải trí */}
-                <li>
-                  <div
-                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition"
-                    onClick={() => toggleTopic('culture')}
-                  >
-                    <div className="flex items-center justify-center w-9 h-9">
-                      <Smile className="w-5 h-5 text-gray-700" />
-                    </div>
-                    <span className="flex-1 text-[14px] text-gray-700">Văn hoá - Giải quí</span>
-                    {expandedTopics.includes('culture') ? (
-                      <ChevronUp className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
-                </li>
-
-                {/* Học tập - Kiến thức */}
-                <li>
-                  <div
-                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition"
-                    onClick={() => toggleTopic('education')}
-                  >
-                    <div className="flex items-center justify-center w-9 h-9">
-                      <BookOpen className="w-5 h-5 text-gray-700" />
-                    </div>
-                    <span className="flex-1 text-[14px] text-gray-700">Học tập - Kiến thức</span>
-                    {expandedTopics.includes('education') ? (
-                      <ChevronUp className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
-                </li>
-
-                {/* Mua sắm */}
-                <li>
-                  <div
-                    className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer transition"
-                    onClick={() => toggleTopic('shopping')}
-                  >
-                    <div className="flex items-center justify-center w-9 h-9">
-                      <ShoppingBag className="w-5 h-5 text-gray-700" />
-                    </div>
-                    <span className="flex-1 text-[14px] text-gray-700">Mua sắm</span>
-                    {expandedTopics.includes('shopping') ? (
-                      <ChevronUp className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
-                </li>
-              </ul>
+        {/* Topics Section */}
+        <div>
+          <button
+            className="flex items-center justify-between w-full px-2 py-2 hover:bg-gray-100 rounded-lg transition"
+            onClick={() => setTopicsExpanded(!topicsExpanded)}
+          >
+            <span className="text-[15px] text-gray-600">Chủ đề</span>
+            {topicsExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
             )}
-          </div>
+          </button>
+
+          {topicsExpanded && (
+            <ul className="mt-1 space-y-1">
+              {/* Văn hóa gần gũi */}
+              <li>
+                <button
+                  className="flex items-center gap-4 w-full px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                  onClick={() => toggleTopic('culture')}
+                >
+                  <Smile className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                  <span className="flex-1 text-left text-[15px] text-gray-800">Văn hoá gần gũi</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedTopics.includes('culture') ? 'rotate-180' : ''}`} />
+                </button>
+              </li>
+
+              {/* Học tập - Kiến thức */}
+              <li>
+                <button
+                  className="flex items-center gap-4 w-full px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                  onClick={() => toggleTopic('education')}
+                >
+                  <BookOpen className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                  <span className="flex-1 text-left text-[15px] text-gray-800">Học tập - Kiến thức</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedTopics.includes('education') ? 'rotate-180' : ''}`} />
+                </button>
+              </li>
+
+              {/* Mua sắm */}
+              <li>
+                <button
+                  className="flex items-center gap-4 w-full px-2 py-3 rounded-lg hover:bg-gray-100 transition"
+                  onClick={() => toggleTopic('shopping')}
+                >
+                  <ShoppingBag className="w-6 h-6 text-gray-600" strokeWidth={1.5} />
+                  <span className="flex-1 text-left text-[15px] text-gray-800">Mua sắm</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedTopics.includes('shopping') ? 'rotate-180' : ''}`} />
+                </button>
+              </li>
+            </ul>
+          )}
         </div>
       </div>
     </aside>
