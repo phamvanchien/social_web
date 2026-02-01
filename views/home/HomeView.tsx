@@ -7,7 +7,6 @@ import { ResponseWithPaginationType } from "@/types/base.type";
 import { API_CODE } from "@/enums/api.enum";
 import ErrorList from "@/components/common/ErrorList";
 import PostCardLoading from "@/components/layouts/posts/PostCardLoading";
-import { useSocket } from "@/hooks/socket";
 
 const HomeView = () => {
   const [posts, setPosts] = useState<ResponseWithPaginationType<ResponsePostItem[]>>();
@@ -15,7 +14,7 @@ const HomeView = () => {
   const [loading, setLoading] = useState(false);
   const [errorPage, setErrorPage] = useState(false);
 
-  const socket = useSocket();
+  // const socket = useSocket();
 
   const fetchPosts = async () => {
     setLoading(true);

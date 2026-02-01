@@ -1,7 +1,7 @@
 "use client";
 import Button from "@/components/common/Button";
 import { Modal } from "@/components/common/Modal";
-import { Calendar, ChevronDown, Globe, ImagePlus, MapPin, Smile, Lock, X, Users, UserMinus, Settings, Check } from "lucide-react";
+import { Calendar, ChevronDown, Globe, ImagePlus, MapPin, Smile, Lock, X, Users, Check } from "lucide-react";
 import React, { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { createPost } from "@/api/post.api";
 import { RequestCreatePost } from "@/types/post.type";

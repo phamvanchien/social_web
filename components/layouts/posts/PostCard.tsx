@@ -22,7 +22,7 @@ import {
   ZoomOut,
   Smile
 } from "lucide-react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { timeAgo } from "@/utils/helper.utils";
 
@@ -360,13 +360,13 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const closeGallery = () => setIsGalleryOpen(false);
 
-  const prevMedia = () => {
+  const prevMedia = useCallback(() => {
     setActiveMediaIndex((prev) => (prev - 1 + media.length) % media.length);
-  };
+  }, [media.length]);
 
-  const nextMedia = () => {
+  const nextMedia = useCallback(() => {
     setActiveMediaIndex((prev) => (prev + 1) % media.length);
-  };
+  }, [media.length]);
 
   useEffect(() => {
     if (!isGalleryOpen) return;
@@ -377,7 +377,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [isGalleryOpen]);
+  }, [isGalleryOpen, prevMedia, nextMedia]);
 
   useEffect(() => {
     if (media.length === 0) {

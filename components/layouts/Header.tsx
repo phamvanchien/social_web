@@ -22,7 +22,7 @@ export default function Header() {
       const userParse = JSON.parse(userAuth);
       dispatch(setUser(userParse));
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (userLogged) {

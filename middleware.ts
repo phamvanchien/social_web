@@ -15,7 +15,8 @@ export async function middleware(request: NextRequest) {
     try {
       userData = JSON.parse(userString);
       hasLocation = userData?.lat != null && userData?.long != null;
-    } catch (error) {
+    } catch {
+      console.error('ERROR PARSING COOKIE');
       // Invalid JSON, treat as no location
       hasLocation = false;
     }

@@ -10,6 +10,7 @@ import { getCookie, setCookie } from "@/utils/cookie.utils";
 import { APP_CONFIG } from "@/config/app.config";
 
 const LocationPage = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [errorMessage, setErrorMessage] = useState<string>();
 
   const handleLocationSelected = async (lat: number, lng: number) => {

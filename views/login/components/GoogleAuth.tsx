@@ -7,7 +7,7 @@ import { API_CODE } from "@/enums/api.enum";
 import { APP_AUTH, APP_ERROR } from "@/enums/app.enum";
 import { AppErrorType, BaseResponseType } from "@/types/base.type";
 import { setCookie } from "@/utils/cookie.utils";
-import React, { Dispatch, SetStateAction, useEffect } from "react";
+import React, { Dispatch, SetStateAction, useCallback, useEffect } from "react";
 
 interface GoogleAuthProps {
   setErrorMessage: Dispatch<SetStateAction<AppErrorType | undefined>>
@@ -15,7 +15,7 @@ interface GoogleAuthProps {
 }
 
 const GoogleAuth: React.FC<GoogleAuthProps> = ({ setErrorMessage, code }) => {
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     try {
       if (!code) {
         setErrorMessage({
@@ -26,7 +26,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ setErrorMessage, code }) => {
       }
       const response = await authWithGoogleCallback(code);
       if (response && response.code === API_CODE.OK) {
-        setCookie(APP_AUTH.COOKIE_AUTH_KEY, response.data.access_token, { 
+        setCookie(APP_AUTH.COOKIE_AUTH_KEY, response.data.access_token, {
           expires: APP_CONFIG.TOKEN_EXPIRE_TIME,
           path: '/',
           sameSite: 'lax',
@@ -45,11 +45,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ setErrorMessage, code }) => {
         message: (error as BaseResponseType).error?.message as string
       });
     }
-  }
+  }, [code, setErrorMessage]);
 
   useEffect(() => {
     handleGoogleLogin();
-  }, [code]);
+  }, [handleGoogleLogin]);
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-white">
