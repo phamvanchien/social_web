@@ -31,7 +31,7 @@ export default async function RootLayout({
 
   let Layout = MainLayout;
 
-  if (['/login', '/reset-password', '/register'].includes(pathname)) {
+  if (['/login', '/reset-password', '/register', '/location'].includes(pathname)) {
     Layout = AuthLayout;
   }
 

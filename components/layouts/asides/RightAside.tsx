@@ -6,7 +6,7 @@ import {
 const RightAside = () => {
   return (
     <aside className="col-span-12 lg:col-span-3">
-      <div className="sticky top-20 space-y-4">
+      <div className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-4">
         {/* Gợi ý cho bạn */}
         <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-3">
           <div className="flex items-center justify-between">

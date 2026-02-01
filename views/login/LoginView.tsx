@@ -71,19 +71,26 @@ const LoginView = () => {
 
       setLoading(false);
       if (response && response.code === API_CODE.OK) {
-        setCookie(APP_AUTH.COOKIE_AUTH_KEY, response.data.access_token, { 
+        // Set cookies
+        setCookie(APP_AUTH.COOKIE_AUTH_KEY, response.data.access_token, {
           expires: APP_CONFIG.TOKEN_EXPIRE_TIME,
           path: '/',
           sameSite: 'lax',
           secure: true
         });
-        setCookie(APP_AUTH.COOKIE_AUTH_USER, JSON.stringify(response.data.user), { 
+        setCookie(APP_AUTH.COOKIE_AUTH_USER, JSON.stringify(response.data.user), {
           expires: APP_CONFIG.TOKEN_EXPIRE_TIME,
           path: '/',
           sameSite: 'lax',
           secure: true
         });
-        window.location.href = "/";
+
+        // Kiểm tra nếu cần chọn location
+        if (response.data.target === 'location') {
+          window.location.href = "/location";
+        } else {
+          window.location.href = "/";
+        }
         return;
       }
 

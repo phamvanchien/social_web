@@ -33,6 +33,7 @@ export interface ResponseAuthenticateType extends BaseResponseType {
   data: {
     access_token: string
     user: UserResponseType
+    target?: 'location' | null
   }
 }
 

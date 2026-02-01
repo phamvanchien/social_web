@@ -4,9 +4,22 @@ import { APP_AUTH } from './enums/app.enum';
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(APP_AUTH.COOKIE_AUTH_KEY)?.value;
-  const user = request.cookies.get(APP_AUTH.COOKIE_AUTH_USER)?.value;
+  const userString = request.cookies.get(APP_AUTH.COOKIE_AUTH_USER)?.value;
 
-  const isLogged = token && user;
+  const isLogged = token && userString;
+
+  // Parse user data to check location
+  let userData = null;
+  let hasLocation = false;
+  if (userString) {
+    try {
+      userData = JSON.parse(userString);
+      hasLocation = userData?.lat != null && userData?.long != null;
+    } catch (error) {
+      // Invalid JSON, treat as no location
+      hasLocation = false;
+    }
+  }
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-pathname', request.nextUrl.pathname);
@@ -16,11 +29,20 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  if (request.nextUrl.pathname === '/login' && isLogged) {
+  const publicPaths = ['/login', '/reset-password', '/register', '/location'];
+
+  // Nếu đã login và đã có location, không cho vào login hoặc location page
+  if (isLogged && hasLocation && ['/login', '/location'].includes(request.nextUrl.pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  if (!['/login', '/reset-password', '/register'].includes(request.nextUrl.pathname) && !isLogged) {
+  // Nếu đã login nhưng chưa có location, chỉ cho vào /location
+  if (isLogged && !hasLocation && request.nextUrl.pathname !== '/location') {
+    return NextResponse.redirect(new URL('/location', request.url));
+  }
+
+  // Nếu chưa login và không phải trang public, redirect về login
+  if (!publicPaths.includes(request.nextUrl.pathname) && !isLogged) {
     const response = NextResponse.redirect(new URL('/login', request.url));
 
     const fullUrl = request.nextUrl.pathname + request.nextUrl.search;

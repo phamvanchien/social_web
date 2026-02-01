@@ -392,7 +392,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const zoomOut = () => setGalleryZoom((z) => Math.max(0.5, z - 0.25));
 
   return (
-    <article className="bg-white overflow-hidden">
+    <article className="bg-white overflow-hidden rounded-xl border border-gray-200/60 shadow-sm">
       {/* Top bar: Location + Time | Follow + More */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-1.5 text-[13px] text-gray-600">
