@@ -8,13 +8,13 @@ export async function middleware(request: NextRequest) {
 
   const isLogged = token && userString;
 
-  // Parse user data to check location
+  // Parse user data to check location (ward_id)
   let userData = null;
   let hasLocation = false;
   if (userString) {
     try {
       userData = JSON.parse(userString);
-      hasLocation = userData?.lat != null && userData?.long != null;
+      hasLocation = userData?.ward_id != null;
     } catch {
       console.error('ERROR PARSING COOKIE');
       // Invalid JSON, treat as no location

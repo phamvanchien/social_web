@@ -66,12 +66,12 @@ const EmojiPicker = ({ open, onClose, onSelect }: EmojiPickerProps) => {
   return (
     <div
       ref={ref}
-      className="absolute bottom-full right-0 mb-2 w-[320px] bg-white rounded-xl shadow-lg border border-gray-200 z-50"
+      className="absolute bottom-full right-0 mb-2 w-[320px] bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50"
     >
       <div className="p-2 max-h-[300px] overflow-y-auto">
         {emojiCategories.map((category) => (
           <div key={category.name} className="mb-3">
-            <div className="text-[12px] font-medium text-gray-500 px-1 mb-1">
+            <div className="text-[12px] font-medium text-gray-500 dark:text-gray-400 px-1 mb-1">
               {category.name}
             </div>
             <div className="grid grid-cols-8 gap-0.5">
@@ -79,7 +79,7 @@ const EmojiPicker = ({ open, onClose, onSelect }: EmojiPickerProps) => {
                 <button
                   key={index}
                   type="button"
-                  className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 rounded transition"
+                  className="w-8 h-8 flex items-center justify-center text-xl hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition"
                   onClick={() => {
                     onSelect(emoji);
                   }}

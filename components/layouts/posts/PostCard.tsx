@@ -43,6 +43,39 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [isHeartBouncing, setIsHeartBouncing] = useState(false);
   const bounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [galleryZoom, setGalleryZoom] = useState(1);
+  const [address, setAddress] = useState<string | null>(null);
+
+  // Fetch address from coordinates
+  useEffect(() => {
+    if (!post.longitude || !post.latitude) {
+      setAddress(null);
+      return;
+    }
+
+    const fetchAddress = async () => {
+      try {
+        const res = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${post.latitude},${post.longitude}&key=AIzaSyCX7Yx5-P_1m7tuM-P9zIk-EOhcad-XoeA&language=vi`
+        );
+        const data = await res.json();
+        if (data?.status === "OK" && data.results?.length > 0) {
+          // Tìm địa chỉ cấp phường/xã hoặc quận/huyện
+          const result = data.results.find((r: { types: string[] }) =>
+            r.types.includes("sublocality_level_1") ||
+            r.types.includes("administrative_area_level_2")
+          ) || data.results[0];
+
+          // Lấy formatted_address ngắn gọn
+          const parts = result.formatted_address.split(",").slice(0, 2);
+          setAddress(parts.join(",").trim());
+        }
+      } catch {
+        setAddress(null);
+      }
+    };
+
+    fetchAddress();
+  }, [post.longitude, post.latitude]);
 
   const formatCount = (n: number) => {
     if (!n || n === 0) return "0";
@@ -492,13 +525,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const zoomOut = () => setGalleryZoom((z) => Math.max(0.5, z - 0.25));
 
   return (
-    <article className="bg-white overflow-hidden rounded-xl border border-gray-200/60 shadow-sm">
+    <article className="bg-white dark:bg-gray-900 dark:bg-gray-900 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700/60 dark:border-gray-700/60 shadow-sm">
       {/* Top bar: Location + Time | Follow + More */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
-        <div className="flex items-center gap-1.5 text-[13px] text-gray-600">
+        <div className="flex items-center gap-1.5 text-[13px] text-gray-600 dark:text-gray-400">
           <Globe className="w-4 h-4 text-gray-400" />
-          <span>{"P. Gò Vấp, TP. Hồ Chí Minh"}</span>
-          <span className="text-gray-300">·</span>
+          {address && (
+            <>
+              <span>{address}</span>
+              <span className="text-gray-300">·</span>
+            </>
+          )}
           <span>{timeAgo(post.created_at)}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -508,7 +545,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
               <span>Theo dõi</span>
             </button>
           )}
-          <button className="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+          <button className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer">
             <MoreHorizontal className="w-5 h-5" />
           </button>
         </div>
@@ -525,12 +562,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             className="object-cover"
           />
         </div>
-        <span className="font-semibold text-[15px] text-gray-900">{fullName}</span>
+        <span className="font-semibold text-[15px] text-gray-900 dark:text-gray-100 dark:text-gray-100">{fullName}</span>
       </div>
 
       {/* Caption */}
       <div
-        className="px-4 pb-3 text-[15px] text-gray-800 leading-relaxed"
+        className="px-4 pb-3 text-[15px] text-gray-800 dark:text-gray-200 dark:text-gray-200 leading-relaxed"
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
 
@@ -602,27 +639,27 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           {carouselIndex > 0 && (
             <button
               type="button"
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-gray-900/90 shadow-md flex items-center justify-center hover:bg-white dark:bg-gray-900 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setCarouselIndex((prev) => Math.max(0, prev - 1));
               }}
               aria-label="Ảnh trước"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
+              <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </button>
           )}
           {carouselIndex < media.length - 1 && (
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white dark:bg-gray-900/90 shadow-md flex items-center justify-center hover:bg-white dark:bg-gray-900 transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setCarouselIndex((prev) => Math.min(media.length - 1, prev + 1));
               }}
               aria-label="Ảnh tiếp"
             >
-              <ChevronRight className="w-5 h-5 text-gray-700" />
+              <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </button>
           )}
 
@@ -635,7 +672,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 className={`w-1.5 h-1.5 rounded-full transition-all ${
                   i === carouselIndex
                     ? "bg-blue-500 w-2 h-2"
-                    : "bg-white/70 hover:bg-white"
+                    : "bg-white dark:bg-gray-900/70 hover:bg-white dark:bg-gray-900"
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -668,7 +705,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 className="w-6 h-6"
               />
             </span>
-            <span className="text-[14px] text-gray-700 font-medium">
+            <span className="text-[14px] text-gray-700 dark:text-gray-300 dark:text-gray-300 font-medium">
               {formatCount(likeCount)}
             </span>
           </button>
@@ -692,7 +729,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             <SharePopup
               open={showSharePopup}
               onClose={() => setShowSharePopup(false)}
-              postId={post.id}
+              postLink={post.link}
               postContent={post.content}
             />
           </div>
@@ -700,7 +737,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
         {/* Right side: bookmark */}
         <button
-          className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
+          className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-300 cursor-pointer"
           aria-label="Lưu bài viết"
         >
           <Bookmark className="w-6 h-6" />
@@ -709,12 +746,12 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
       {/* Comments Section */}
       {isCommentsOpen && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-gray-100 dark:border-gray-800 dark:border-gray-800">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3">
             <div className="relative" ref={sortDropdownRef}>
               <button
-                className="flex items-center gap-1 text-[14px] text-gray-700 hover:text-gray-900 cursor-pointer"
+                className="flex items-center gap-1 text-[14px] text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-gray-100 cursor-pointer"
                 onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
               >
                 <span>{commentSort === 'top' ? 'Bình luận hàng đầu' : 'Tất cả bình luận'}</span>
@@ -723,15 +760,15 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
               {/* Dropdown */}
               {isSortDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[180px]">
+                <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-10 min-w-[180px]">
                   <button
-                    className={`w-full text-left px-4 py-2 text-[14px] hover:bg-gray-50 ${commentSort === 'top' ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
+                    className={`w-full text-left px-4 py-2 text-[14px] hover:bg-gray-50 dark:hover:bg-gray-800 ${commentSort === 'top' ? 'text-blue-600 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
                     onClick={() => handleSortChange('top')}
                   >
                     Bình luận hàng đầu
                   </button>
                   <button
-                    className={`w-full text-left px-4 py-2 text-[14px] hover:bg-gray-50 ${commentSort === 'all' ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
+                    className={`w-full text-left px-4 py-2 text-[14px] hover:bg-gray-50 dark:hover:bg-gray-800 ${commentSort === 'all' ? 'text-blue-600 font-medium' : 'text-gray-700 dark:text-gray-300'}`}
                     onClick={() => handleSortChange('all')}
                   >
                     Tất cả bình luận
@@ -739,7 +776,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 </div>
               )}
             </div>
-            <span className="text-[14px] font-semibold text-gray-900">
+            <span className="text-[14px] font-semibold text-gray-900 dark:text-gray-100">
               {new Intl.NumberFormat("vi-VN").format(commentCount)} bình luận
             </span>
           </div>
@@ -751,7 +788,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-center text-gray-500 text-[14px] py-4">Chưa có bình luận nào</p>
+              <p className="text-center text-gray-500 dark:text-gray-400 text-[14px] py-4">Chưa có bình luận nào</p>
             ) : (
               comments.map((comment: ResponseCommentItem) => (
                 <div key={comment.id} className="space-y-3">
@@ -771,14 +808,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <p className="font-semibold text-[15px] text-gray-900">
+                          <p className="font-semibold text-[15px] text-gray-900 dark:text-gray-100">
                             {comment.user.firstName} {comment.user.lastName}
                           </p>
-                          <p className="text-[14px] text-gray-800 mt-0.5">{comment.content}</p>
-                          <div className="flex items-center gap-4 mt-1.5 text-[13px] text-gray-500">
+                          <p className="text-[14px] text-gray-800 dark:text-gray-200 mt-0.5">{comment.content}</p>
+                          <div className="flex items-center gap-4 mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
                             <span>{timeAgo(comment.createdAt)}</span>
                             <button
-                              className="font-medium hover:text-gray-700"
+                              className="font-medium hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-300"
                               onClick={() => handleStartReply(comment)}
                             >
                               Trả lời
@@ -786,7 +823,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                           </div>
                           {comment.repliesCount > 0 && !expandedReplies[comment.id] && (
                             <button
-                              className="flex items-center gap-1 mt-2 text-[13px] text-gray-500 hover:text-gray-700"
+                              className="flex items-center gap-1 mt-2 text-[13px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-300"
                               onClick={() => handleExpandReplies(comment.id)}
                             >
                               <ChevronDown className="w-4 h-4" />
@@ -798,7 +835,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                         {/* Like + More */}
                         <div className="flex items-center gap-3 pt-1">
                           <button
-                            className="flex items-center gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+                            className="flex items-center gap-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
                             onClick={() => handleClickLikeComment(comment.id, comment.like)}
                           >
                             <span className={`inline-flex ${bouncingCommentHearts[comment.id] ? "animate-[bounce_0.6s_ease]" : ""}`}>
@@ -810,7 +847,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                             </span>
                             <span className="text-[13px] text-gray-600">{getCommentLikeCount(comment)}</span>
                           </button>
-                          <button className="text-gray-400 hover:text-gray-600">
+                          <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <MoreHorizontal className="w-5 h-5" />
                           </button>
                         </div>
@@ -820,7 +857,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
                   {/* Replies List */}
                   {(expandedReplies[comment.id] || loadingReplies[comment.id]) && (
-                    <div className="ml-10 pl-3 border-l-2 border-gray-100 space-y-3">
+                    <div className="ml-10 pl-3 border-l-2 border-gray-100 dark:border-gray-800 space-y-3">
                       {loadingReplies[comment.id] && !expandedReplies[comment.id] ? (
                         <div className="flex justify-center py-2">
                           <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -841,14 +878,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1">
-                                    <p className="font-semibold text-[14px] text-gray-900">
+                                    <p className="font-semibold text-[14px] text-gray-900 dark:text-gray-100">
                                       {reply.user.firstName} {reply.user.lastName}
                                     </p>
-                                    <p className="text-[13px] text-gray-800 mt-0.5">{reply.content}</p>
-                                    <div className="flex items-center gap-3 mt-1 text-[12px] text-gray-500">
+                                    <p className="text-[13px] text-gray-800 dark:text-gray-200 mt-0.5">{reply.content}</p>
+                                    <div className="flex items-center gap-3 mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                                       <span>{timeAgo(reply.createdAt)}</span>
                                       <button
-                                        className="font-medium hover:text-gray-700"
+                                        className="font-medium hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-300"
                                         onClick={() => handleStartReply(comment)}
                                       >
                                         Trả lời
@@ -857,7 +894,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                                   </div>
                                   <div className="flex items-center gap-2 pt-1">
                                     <button
-                                      className="flex items-center gap-1 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                      className="flex items-center gap-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
                                       onClick={() => handleClickLikeComment(reply.id, reply.like)}
                                     >
                                       <span className={`inline-flex ${bouncingCommentHearts[reply.id] ? "animate-[bounce_0.6s_ease]" : ""}`}>
@@ -878,7 +915,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                           {/* Load more replies button */}
                           {hasMoreReplies[comment.id] && (
                             <button
-                              className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-gray-700 font-medium"
+                              className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-300 font-medium"
                               onClick={() => handleLoadMoreReplies(comment.id)}
                               disabled={loadingReplies[comment.id]}
                             >
@@ -906,22 +943,22 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[12px] text-gray-500">
-                              Đang trả lời <span className="font-medium text-gray-700">{comment.user.firstName} {comment.user.lastName}</span>
+                            <span className="text-[12px] text-gray-500 dark:text-gray-400">
+                              Đang trả lời <span className="font-medium text-gray-700 dark:text-gray-300">{comment.user.firstName} {comment.user.lastName}</span>
                             </span>
                             <button
-                              className="text-[12px] text-gray-400 hover:text-gray-600"
+                              className="text-[12px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                               onClick={handleCancelReply}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                          <div className="flex items-center bg-gray-100 rounded-full px-3 py-2">
+                          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-2">
                             <input
                               ref={replyInputRef}
                               type="text"
                               placeholder="Viết câu trả lời..."
-                              className="flex-1 bg-transparent text-[13px] text-gray-800 placeholder-gray-500 outline-none"
+                              className="flex-1 bg-transparent text-[13px] text-gray-800 dark:text-gray-200 placeholder-gray-500 outline-none"
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
                               onKeyDown={handleReplyKeyDown}
@@ -950,7 +987,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
             {/* Load more button */}
             {hasMoreComments && (
               <button
-                className="w-full py-2 text-[14px] text-gray-600 hover:text-gray-800 font-medium"
+                className="w-full py-2 text-[14px] text-gray-600 hover:text-gray-800 dark:text-gray-200 font-medium"
                 onClick={handleLoadMoreComments}
                 disabled={commentsLoading}
               >
@@ -960,7 +997,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </div>
 
           {/* Comment Input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
             <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
               <Image
                 src={userLogged?.avatar || "/images/test/avatar.png"}
@@ -970,18 +1007,18 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 className="object-cover"
               />
             </div>
-            <div className="flex-1 flex items-center bg-gray-100 rounded-full px-4 py-2.5">
+            <div className="flex-1 flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2.5">
               <input
                 type="text"
                 placeholder="Thêm bình luận.."
-                className="flex-1 bg-transparent text-[14px] text-gray-800 placeholder-gray-500 outline-none"
+                className="flex-1 bg-transparent text-[14px] text-gray-800 dark:text-gray-200 placeholder-gray-500 outline-none"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isSubmitting}
               />
               <button
-                className="text-gray-400 hover:text-gray-600 ml-2"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ml-2"
                 onClick={handleSubmitComment}
                 disabled={isSubmitting || !commentText.trim()}
               >
@@ -1037,7 +1074,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           <ChevronRight className="w-6 h-6" />
         </button>
 
-          <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-3 py-2 text-white">
+          <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-white dark:bg-gray-900/10 backdrop-blur-sm rounded-full px-3 py-2 text-white">
             <button
               type="button"
               className="p-1 hover:text-white/80"

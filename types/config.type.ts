@@ -14,6 +14,7 @@ export interface AppConfigType {
       post: string
       comments: string
       user: string
+      regions: string
     }
   }
 }

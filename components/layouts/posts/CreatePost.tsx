@@ -14,20 +14,64 @@ interface CreatePostProps {
   setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-type VisibilityValue = 1 | 2 | 3;
+type VisibilityValue = 1 | 2 | 3 | 4;
 
 const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
   const [visibilityDraft, setVisibilityDraft] = useState<VisibilityValue>(3);
   const [visibility, setVisibility] = useState<VisibilityValue>(3);
   const [openVisibility, setOpenVisibility] = useState(false);
   const userLogged = useSelector((state: RootState) => state.userSlice).data;
+  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+  const [locationAvailable, setLocationAvailable] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Get current location when modal opens
+  useEffect(() => {
+    if (!open) return;
+
+    setCurrentAddress(null);
+    setLocationAvailable(false);
+    setCurrentCoords(null);
+    if (!("geolocation" in navigator)) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        console.log(latitude, longitude)
+        try {
+          const res = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyCX7Yx5-P_1m7tuM-P9zIk-EOhcad-XoeA&language=vi`
+          );
+          const data = await res.json();
+          if (data?.status === "OK" && data.results?.length > 0) {
+            // Lấy địa chỉ ngắn gọn (2 phần đầu)
+            const parts = data.results[0].formatted_address.split(",").slice(0, 2);
+            setCurrentAddress(parts.join(",").trim());
+            setLocationAvailable(true);
+            setCurrentCoords({ lat: latitude, lng: longitude });
+          }
+        } catch {
+          setLocationAvailable(false);
+        }
+      },
+      (error) => {
+        console.log("Geolocation error:", error.code, error.message);
+        setLocationAvailable(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [open]);
+
   const visibilityOptions = useMemo(
     () => [
-      { value: 3, title: "Vị trí đang sống", desc: "Bất kỳ ai nằm trong khu vực phường, xã bạn đang sống sẽ thấy.", icon: <MapPin className="w-5 h-5" /> },
-      { value: 2, title: "Bạn bè", desc: "Danh sách bạn bè", icon: <Users className="w-5 h-5" /> },
-      { value: 1, title: "Chỉ mình tôi", desc: "Chỉ mình bạn", icon: <Lock className="w-5 h-5" /> }
+      { value: 3, title: "Vị trí bạn sống", desc: "Bất kỳ ai nằm trong khu vực phường, xã bạn đang sống sẽ thấy.", icon: <MapPin className="w-5 h-5" />, disabled: false },
+      { value: 4, title: "Vị trí hiện tại", desc: locationAvailable ? currentAddress : "Không thể lấy vị trí", icon: <MapPin className="w-5 h-5" />, disabled: !locationAvailable },
+      // { value: 2, title: "Bạn bè", desc: "Danh sách bạn bè", icon: <Users className="w-5 h-5" />, disabled: false },
+      { value: 1, title: "Chỉ mình tôi", desc: "Chỉ mình bạn", icon: <Lock className="w-5 h-5" />, disabled: false }
     ],
-    []
+    [currentAddress, locationAvailable]
   );
   const selectedVisibility = visibilityOptions.find((o) => o.value === visibility);
 
@@ -66,6 +110,21 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
       form.append("active", "1");
       images.forEach((f) => form.append("files", f));
 
+      // Gửi longitude, latitude theo visibility
+      if (visibility === 1 || visibility === 4) {
+        // Vị trí hiện tại hoặc Chỉ mình tôi: dùng tọa độ GPS hiện tại
+        if (currentCoords) {
+          form.append("longitude", currentCoords.lng.toString());
+          form.append("latitude", currentCoords.lat.toString());
+        }
+      } else if (visibility === 3) {
+        // Vị trí bạn sống: dùng tọa độ từ userLogged
+        if (userLogged?.long && userLogged?.lat) {
+          form.append("longitude", userLogged.long.toString());
+          form.append("latitude", userLogged.lat.toString());
+        }
+      }
+
       await createPost(form as unknown as RequestCreatePost);
       // reset and close
       setOpen(false);
@@ -83,18 +142,18 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
     <>
       <Modal open={open} onClose={() => setOpen(false)} size="lg" align="top">
         {/* Top user row */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-200/70 mt-4">
+        <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700/70 mt-4">
           <div className="flex items-center gap-3">
             <img src={userLogged?.avatar} alt="me" className="w-10 h-10 rounded-full object-cover" />
             <div className="leading-tight">
-              <div className="text-[15px] font-semibold text-gray-900">{userLogged?.first_name} {userLogged?.last_name}</div>
+              <div className="text-[15px] font-semibold text-gray-900 dark:text-gray-100">{userLogged?.first_name} {userLogged?.last_name}</div>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => setOpenVisibility(true)}
-            className="cursor-pointer inline-flex items-center gap-1 text-[13px] text-gray-600 hover:text-gray-800"
+            className="cursor-pointer inline-flex items-center gap-1 text-[13px] text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-800"
           >
             {selectedVisibility?.icon ?? <Globe className="w-4 h-4" />}
             {selectedVisibility?.title ?? visibilityOptions[0].title}
@@ -103,10 +162,10 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
         </div>
 
         {/* Composer card */}
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 shadow-sm ring-1 ring-gray-200/70">
+        <div className="mt-4 rounded-xl bg-gray-50 dark:bg-gray-800 p-4 shadow-sm ring-1 ring-gray-200/70">
           <textarea
             placeholder="Chia sẻ cảm xúc của bạn hiện tại!"
-            className="w-full h-32 bg-transparent outline-none resize-none text-[15px] placeholder:text-gray-500"
+            className="w-full h-32 bg-transparent outline-none resize-none text-[15px] placeholder:text-gray-500 dark:text-gray-400 dark:text-gray-500"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
@@ -120,7 +179,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
                     type="button"
                     aria-label="Xóa ảnh"
                     onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="cursor-pointer absolute top-1 right-1 z-10 inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-700 shadow ring-1 ring-black/10 hover:bg-white"
+                    className="cursor-pointer absolute top-1 right-1 z-10 inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-gray-700 dark:text-gray-300 shadow ring-1 ring-black/10 hover:bg-white"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -130,7 +189,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
           )}
 
           <div className="mt-4 flex items-center justify-between">
-            <div className="text-[14px] text-gray-700">Chia sẻ vào bài viết</div>
+            <div className="text-[14px] text-gray-700 dark:text-gray-300">Chia sẻ vào bài viết</div>
             <div className="flex items-center gap-4">
               <input
                 ref={fileInputRef}
@@ -190,8 +249,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
 
       {/* Visibility chooser modal */}
       <Modal open={openVisibility} onClose={() => setOpenVisibility(false)} size="md" align="top">
-        <div className="pb-3 border-b border-gray-200/70 text-center font-semibold">Ai có thể xem bài viết này?</div>
-        <div className="mt-3 text-[14px] text-gray-600">
+        <div className="pb-3 border-b border-gray-200 dark:border-gray-700/70 text-center font-semibold">Ai có thể xem bài viết này?</div>
+        <div className="mt-3 text-[14px] text-gray-600 dark:text-gray-400 dark:text-gray-500">
           Bài viết này sẽ hiển thị trên bảng tin và trang cá nhân của bạn. Bạn có thể tuỳ chỉnh lại đối tượng xem bài viết bên dưới.
         </div>
         <div className="mt-4 space-y-2">
@@ -199,19 +258,20 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, setOpen }) => {
             <button
               key={opt.value}
               type="button"
-              onClick={() => setVisibilityDraft(opt.value as VisibilityValue)}
-              className="w-full cursor-pointer flex items-center justify-between rounded-xl px-3 py-3 hover:bg-gray-50"
+              disabled={opt.disabled}
+              onClick={() => !opt.disabled && setVisibilityDraft(opt.value as VisibilityValue)}
+              className={`w-full flex items-center justify-between rounded-xl px-3 py-3 ${opt.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800'}`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700">
+                <div className={`w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${opt.disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
                   {opt.icon}
                 </div>
                 <div className="text-left">
-                  <div className="text-[14px] font-medium text-gray-900">{opt.title}</div>
-                  <div className="text-[12px] text-gray-500">{opt.desc}</div>
+                  <div className={`text-[14px] font-medium ${opt.disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>{opt.title}</div>
+                  <div className={`text-[12px] ${opt.disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`}>{opt.desc}</div>
                 </div>
               </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${visibilityDraft === opt.value ? 'border-sky-500 ring-2 ring-sky-200 text-sky-600' : 'border-gray-300 text-transparent'}`}>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${opt.disabled ? 'border-gray-200 dark:border-gray-700 text-transparent' : visibilityDraft === opt.value ? 'border-sky-500 ring-2 ring-sky-200 text-sky-600' : 'border-gray-300 text-transparent'}`}>
                 <Check className="w-3.5 h-3.5" />
               </div>
             </button>

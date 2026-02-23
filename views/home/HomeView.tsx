@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import PostCard from "@/components/layouts/posts/PostCard";
 import { listPosts } from "@/api/post.api";
 import { ResponsePostItem } from "@/types/post.type";
@@ -13,16 +13,39 @@ const HomeView = () => {
   // const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorPage, setErrorPage] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // const socket = useSocket();
 
-  const fetchPosts = async () => {
+  // Lấy vị trí hiện tại
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentCoords({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      (error) => {
+        console.log("Geolocation error:", error.code, error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
+
+  const fetchPosts = useCallback(async () => {
     setLoading(true);
     setErrorPage(false);
     try {
       const response = await listPosts({
         page: 1,
         size: 10,
+        ...(currentCoords && {
+          longitude: currentCoords.lng,
+          latitude: currentCoords.lat,
+        }),
       });
       if (response && response.code === API_CODE.OK) {
         setPosts(response.data);
@@ -35,11 +58,11 @@ const HomeView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentCoords]);
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   return (
     <section className="col-span-12 lg:col-span-6">

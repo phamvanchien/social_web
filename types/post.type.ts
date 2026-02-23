@@ -4,6 +4,8 @@ export interface RequestCreatePost {
   type?: number;
   files?: File[]
   active?: number;
+  longitude?: number
+  latitude?: number
 }
 
 export interface ResponsePostItem {
@@ -15,6 +17,9 @@ export interface ResponsePostItem {
   created_at: string
   user: UserPost
   userLiked: boolean
+  link: string
+  longitude: number | null
+  latitude: number | null
   files: [
     {
       id: number

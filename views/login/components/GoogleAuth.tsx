@@ -52,11 +52,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ setErrorMessage, code }) => {
   }, [handleGoogleLogin]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-white">
+    <main className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950">
       <div className="flex flex-col items-center gap-4">
-        <Loading size="lg" variant="spinner" color="rgb(99 102 241); indigo-500" />
-        
-        <p className="font-medium text-zinc-700">
+        <Loading size="lg" variant="spinner" color="rgb(99 102 241)" />
+
+        <p className="font-medium text-zinc-700 dark:text-zinc-300">
           Đang đăng nhập với Google...
         </p>
       </div>

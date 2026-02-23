@@ -13,7 +13,7 @@ import {
 interface SharePopupProps {
   open: boolean;
   onClose: () => void;
-  postId: number;
+  postLink: string;
   postContent?: string;
 }
 
@@ -38,7 +38,7 @@ const TelegramIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => {
+const SharePopup = ({ open, onClose, postLink, postContent }: SharePopupProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -46,10 +46,10 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
   const isBrowser =
     typeof window !== "undefined" && typeof document !== "undefined" && !!document.body;
 
-  // Get post URL
+  // Get post URL using the link from API
   const getPostUrl = () => {
     if (typeof window !== "undefined") {
-      return `${window.location.origin}/post/${postId}`;
+      return `${window.location.origin}${postLink}`;
     }
     return "";
   };
@@ -182,7 +182,7 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
       {/* Modal content - Bottom sheet on mobile, centered modal on desktop */}
       <div
         ref={ref}
-        className={`relative w-full md:w-auto md:max-w-[360px] bg-white md:rounded-2xl rounded-t-2xl shadow-xl overflow-hidden transition-transform duration-300 ease-out ${
+        className={`relative w-full md:w-auto md:max-w-[360px] bg-white dark:bg-gray-900 md:rounded-2xl rounded-t-2xl shadow-xl overflow-hidden transition-transform duration-300 ease-out ${
           isAnimating
             ? "translate-y-0 md:translate-y-0"
             : "translate-y-full md:translate-y-4"
@@ -190,29 +190,29 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
       >
         {/* Drag handle - mobile only */}
         <div className="md:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h3 className="text-[16px] font-semibold text-gray-900">Chia sẻ</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="text-[16px] font-semibold text-gray-900 dark:text-gray-100">Chia sẻ</h3>
           <button
             type="button"
-            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-full hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-800 flex items-center justify-center cursor-pointer"
             onClick={onClose}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400 dark:text-gray-500" />
           </button>
         </div>
 
         {/* Share options */}
         <div className="py-3 max-h-[70vh] md:max-h-none overflow-y-auto">
           {/* In-app share options (placeholders for future) */}
-          <div className="px-4 pb-3 mb-3 border-b border-gray-100">
-            <p className="text-[11px] text-gray-400 uppercase font-medium mb-2 px-1">Chia sẻ trong lokasa</p>
+          <div className="px-4 pb-3 mb-3 border-b border-gray-100 dark:border-gray-800">
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 uppercase font-medium mb-2 px-1">Chia sẻ trong lokasa</p>
             <button
               type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
               onClick={() => {
                 // TODO: Implement share to timeline
                 alert("Chức năng đang phát triển");
@@ -221,12 +221,12 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <Share2 className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="text-[14px] text-gray-800">Chia sẻ lên bảng tin</span>
+              <span className="text-[14px] text-gray-800 dark:text-gray-200">Chia sẻ lên bảng tin</span>
             </button>
 
             <button
               type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
               onClick={() => {
                 // TODO: Implement send to friend
                 alert("Chức năng đang phát triển");
@@ -235,28 +235,28 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
               <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                 <Send className="w-5 h-5 text-green-600" />
               </div>
-              <span className="text-[14px] text-gray-800">Gửi cho bạn bè</span>
+              <span className="text-[14px] text-gray-800 dark:text-gray-200">Gửi cho bạn bè</span>
             </button>
           </div>
 
           {/* External share options */}
           <div className="px-4">
-            <p className="text-[11px] text-gray-400 uppercase font-medium mb-2 px-1">Chia sẻ qua</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 uppercase font-medium mb-2 px-1">Chia sẻ qua</p>
 
             {/* Copy link */}
             <button
               type="button"
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
               onClick={handleCopyLink}
             >
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                 {copied ? (
                   <Check className="w-5 h-5 text-green-600" />
                 ) : (
-                  <Link2 className="w-5 h-5 text-gray-600" />
+                  <Link2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 )}
               </div>
-              <span className="text-[14px] text-gray-800">
+              <span className="text-[14px] text-gray-800 dark:text-gray-200">
                 {copied ? "Đã sao chép!" : "Sao chép liên kết"}
               </span>
             </button>
@@ -265,13 +265,13 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
             {supportsNativeShare && (
               <button
                 type="button"
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
                 onClick={handleNativeShare}
               >
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                   <Share2 className="w-5 h-5 text-purple-600" />
                 </div>
-                <span className="text-[14px] text-gray-800">Chia sẻ qua ứng dụng khác</span>
+                <span className="text-[14px] text-gray-800 dark:text-gray-200">Chia sẻ qua ứng dụng khác</span>
               </button>
             )}
 
@@ -279,46 +279,46 @@ const SharePopup = ({ open, onClose, postId, postContent }: SharePopupProps) => 
             <div className="flex items-center gap-3 mt-3 px-1 pb-2">
               <button
                 type="button"
-                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
                 onClick={handleShareFacebook}
               >
                 <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center">
                   <Facebook className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[12px] text-gray-600">Facebook</span>
+                <span className="text-[12px] text-gray-600 dark:text-gray-400">Facebook</span>
               </button>
 
               <button
                 type="button"
-                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
                 onClick={handleShareTwitter}
               >
                 <div className="w-11 h-11 rounded-full bg-black flex items-center justify-center">
                   <TwitterIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[12px] text-gray-600">X</span>
+                <span className="text-[12px] text-gray-600 dark:text-gray-400">X</span>
               </button>
 
               <button
                 type="button"
-                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
                 onClick={handleShareWhatsApp}
               >
                 <div className="w-11 h-11 rounded-full bg-green-500 flex items-center justify-center">
                   <WhatsAppIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[12px] text-gray-600">WhatsApp</span>
+                <span className="text-[12px] text-gray-600 dark:text-gray-400">WhatsApp</span>
               </button>
 
               <button
                 type="button"
-                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer"
                 onClick={handleShareTelegram}
               >
                 <div className="w-11 h-11 rounded-full bg-sky-500 flex items-center justify-center">
                   <TelegramIcon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[12px] text-gray-600">Telegram</span>
+                <span className="text-[12px] text-gray-600 dark:text-gray-400">Telegram</span>
               </button>
             </div>
           </div>

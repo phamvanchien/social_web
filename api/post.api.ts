@@ -19,3 +19,18 @@ export const listPosts = async (payload: RequestWithPaginationType): Promise<Bas
     url: APP_CONFIG.API.PREFIX.post
   });
 }
+
+export const getPostDetail = async (encodedId: string): Promise<BaseResponseType<ResponsePostItem>> => {
+  return request({
+    method: API_METHOD.GET,
+    url: `${APP_CONFIG.API.PREFIX.post}/detail/${encodedId}`
+  });
+}
+
+export const getPostsByUserProfile = async (payload: RequestWithPaginationType): Promise<BaseResponseType<ResponseWithPaginationType<ResponsePostItem[]>>> => {
+  return request({
+    method: API_METHOD.GET,
+    params: payload,
+    url: `${APP_CONFIG.API.PREFIX.post}/profile`
+  });
+}

@@ -20,10 +20,15 @@ const userSlice = createSlice({
     },
     setUserUpdated(state, action: PayloadAction<UserResponseType>) {
       state.userUpdated = action.payload;
+    },
+    updateUserAvatar(state, action: PayloadAction<string>) {
+      if (state.data) {
+        state.data.avatar = action.payload;
+      }
     }
   },
 });
 
-export const { setUser, setUserUpdated } = userSlice.actions;
+export const { setUser, setUserUpdated, updateUserAvatar } = userSlice.actions;
 
 export default userSlice.reducer;

@@ -13,7 +13,8 @@ export const APP_CONFIG: AppConfigType = {
       google_callback: '/google/callback',
       post: '/post',
       comments: '/comments',
-      user: '/user'
+      user: '/user',
+      regions: '/regions'
     }
   }
 }

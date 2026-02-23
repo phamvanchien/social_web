@@ -20,7 +20,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const closeSearch = () => setIsSearchOpen(false);
 
   return (
-    <div className="min-h-screen bg-white text-gray-800">
+    <div className="min-h-screen bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-200">
       <Header onMenuClick={toggleSidebar} onSearchClick={toggleSearch} />
 
       {/* Mobile Menu Sidebar Overlay */}
@@ -33,7 +33,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Mobile Menu Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full w-[280px] bg-white z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed top-0 left-0 h-full w-[280px] bg-white dark:bg-gray-900 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -50,7 +50,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Mobile Search Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-[320px] bg-white z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed top-0 right-0 h-full w-full max-w-[320px] bg-white dark:bg-gray-900 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${
           isSearchOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

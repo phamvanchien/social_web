@@ -9,6 +9,8 @@ export interface RequestWithPaginationType {
   page: number
   size: number
   keyword?: string
+  longitude?: number
+  latitude?: number
 }
 
 export interface ResponseWithPaginationType<T = any> {

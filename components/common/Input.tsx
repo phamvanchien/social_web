@@ -28,8 +28,8 @@ const sizeMap = {
 } as const;
 
 const baseInputClass =
-  "w-full rounded-xl border border-blue-300/80 bg-white shadow-sm outline-none placeholder:text-gray-400 " +
-  "focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors";
+  "w-full rounded-xl border border-blue-300/80 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 " +
+  "focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 transition-colors";
 
 /** ----- khai báo type cho component + static subcomponent Password ----- */
 type InputComponent = React.ForwardRefExoticComponent<
@@ -71,7 +71,7 @@ const InputImpl = forwardRef<HTMLInputElement, BaseProps>(function Input(
       {label && (
         <label
           htmlFor={id}
-          className="mb-1.5 block text-sm font-medium text-gray-700"
+          className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           {label}
           {required && <span className="text-red-500"> *</span>}
@@ -80,7 +80,7 @@ const InputImpl = forwardRef<HTMLInputElement, BaseProps>(function Input(
 
       <div className="relative">
         {leftIcon && (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
             {leftIcon}
           </span>
         )}
@@ -95,7 +95,7 @@ const InputImpl = forwardRef<HTMLInputElement, BaseProps>(function Input(
             sizeMap[size],
             leftIcon && "pl-10",
             rightIcon && "pr-10",
-            hasError && "border-red-500 focus:border-red-500 focus:ring-red-200",
+            hasError && "border-red-500 focus:border-red-500 focus:ring-red-200 dark:focus:ring-red-900",
             className
           )}
           required={required}
@@ -103,20 +103,20 @@ const InputImpl = forwardRef<HTMLInputElement, BaseProps>(function Input(
         />
 
         {rightIcon && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 mt-1">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 mt-1">
             {rightIcon}
           </span>
         )}
       </div>
 
       {hint && !hasError && (
-        <p id={id ? `${id}-hint` : undefined} className="mt-1 text-xs text-gray-500">
+        <p id={id ? `${id}-hint` : undefined} className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {hint}
         </p>
       )}
 
       {error && (
-        <p id={id ? `${id}-error` : undefined} className="mt-1 text-xs text-red-600">
+        <p id={id ? `${id}-error` : undefined} className="mt-1 text-xs text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -125,7 +125,7 @@ const InputImpl = forwardRef<HTMLInputElement, BaseProps>(function Input(
         <p
           key={idx}
           id={id ? `${id}-error-${idx}` : undefined}
-          className="mt-1 flex items-center text-xs text-red-600"
+          className="mt-1 flex items-center text-xs text-red-600 dark:text-red-400"
         >
           <AlertCircle className="mr-1 h-4 w-4" />
           {msg}
@@ -150,7 +150,7 @@ const Password = forwardRef<HTMLInputElement, Omit<BaseProps, "type">>(
           <button
             type="button"
             onClick={() => setShow((s) => !s)}
-            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
             aria-label={show ? "Hide password" : "Show password"}
             tabIndex={-1}
           >

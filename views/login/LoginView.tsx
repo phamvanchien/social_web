@@ -139,16 +139,16 @@ const LoginView = () => {
   }
 
   return (
-    <section className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-4 py-12">
+    <section className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 py-12">
       {/* Background Decoration */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-4 top-0 h-72 w-72 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute -right-4 bottom-0 h-72 w-72 rounded-full bg-purple-200/30 blur-3xl" />
+        <div className="absolute -left-4 top-0 h-72 w-72 rounded-full bg-blue-200/30 dark:bg-blue-900/20 blur-3xl" />
+        <div className="absolute -right-4 bottom-0 h-72 w-72 rounded-full bg-purple-200/30 dark:bg-purple-900/20 blur-3xl" />
       </div>
 
       {/* Login Card */}
       <div className="relative w-full max-w-md">
-        <div className="rounded-3xl bg-white p-8 shadow-xl ring-1 ring-black/5 backdrop-blur-sm">
+        <div className="rounded-3xl bg-white dark:bg-gray-900 p-8 shadow-xl ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-sm">
           {/* Logo/Brand */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
@@ -156,8 +156,8 @@ const LoginView = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Chào mừng trở lại!</h1>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Chào mừng trở lại!</h1>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Đăng nhập để tiếp tục trải nghiệm
             </p>
           </div>
@@ -169,7 +169,7 @@ const LoginView = () => {
 
             {/* Email/Phone Input */}
             <div className="space-y-2">
-              <label htmlFor="user" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="user" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email hoặc số điện thoại
               </label>
               <Input
@@ -179,14 +179,14 @@ const LoginView = () => {
                 value={user}
                 onChange={(e) => { setErrorMessage(undefined); setUser(e.target.value) }}
                 errorMessages={(errorMessage && errorMessage.property === 'user') ? [errorMessage.message] : undefined}
-                className="h-12 rounded-xl border-gray-300 bg-gray-50 transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200"
+                className="h-12 rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 transition focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
               />
             </div>
 
             {/* Password Input */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Mật khẩu
                 </label>
                 <Link
@@ -203,7 +203,7 @@ const LoginView = () => {
                 minLength={6}
                 maxLength={16}
                 errorMessages={(errorMessage && errorMessage.property === 'password') ? [errorMessage.message] : undefined}
-                className="h-12 rounded-xl border-gray-300 bg-gray-50 transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-200"
+                className="h-12 rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 transition focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
               />
             </div>
 
@@ -219,10 +219,10 @@ const LoginView = () => {
             {/* Divider */}
             <div className="relative py-4">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-4 text-sm text-gray-500">Hoặc tiếp tục với</span>
+                <span className="bg-white dark:bg-gray-900 px-4 text-sm text-gray-500 dark:text-gray-400">Hoặc tiếp tục với</span>
               </div>
             </div>
 
@@ -231,7 +231,7 @@ const LoginView = () => {
               type="button"
               variant="light"
               onClick={handleGoogleLogin}
-              className="h-12 w-full rounded-xl border-2 border-gray-200 bg-white font-medium text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 hover:shadow active:scale-[0.98]"
+              className="h-12 w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-gray-700 dark:text-gray-300 shadow-sm transition hover:border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:shadow active:scale-[0.98]"
               aria-label="Đăng nhập với Google"
             >
               {googleLoginLoading ? (
@@ -252,7 +252,7 @@ const LoginView = () => {
 
           {/* Sign Up Link */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Chưa có tài khoản?{' '}
               <Link href="/auth/register" className="font-semibold text-blue-600 transition hover:text-blue-700 hover:underline">
                 Đăng ký ngay
@@ -262,7 +262,7 @@ const LoginView = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-gray-500">
+        <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
           <p>
             Bằng việc đăng nhập, bạn đồng ý với{' '}
             <Link href="/terms" className="text-blue-600 hover:underline">Điều khoản dịch vụ</Link>

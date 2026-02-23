@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import MainLayout from "@/components/layouts/MainLayout";
 import AuthLayout from "@/components/layouts/AuthLayout";
 import AppLayout from "@/components/layouts/AppLayout";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,13 +37,20 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AppLayout>
-          <Layout>{children}</Layout>
-        </AppLayout>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppLayout>
+            <Layout>{children}</Layout>
+          </AppLayout>
+        </ThemeProvider>
       </body>
     </html>
   );
