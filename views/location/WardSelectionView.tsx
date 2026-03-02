@@ -277,11 +277,14 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
             }
           }
 
-          // KHÔNG gọi detectUserLocation auto nữa
-          // Chỉ check cache để hiện detected state ở Step 1
-          const cached = getLocationFromCache();
-          if (cached && !defaultWardId) {
-            setDetectedLocation(ensureDisplayName({ ...cached.detectedLocation, fromCache: true }));
+          // Auto detect GPS khi load trang
+          if (!defaultWardId) {
+            const cached = getLocationFromCache();
+            if (cached) {
+              setDetectedLocation(ensureDisplayName({ ...cached.detectedLocation, fromCache: true }));
+            } else {
+              detectUserLocation();
+            }
           }
         }
       } catch (error) {
