@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { MapPin, Search, Crosshair, AlertCircle, RefreshCw, X, ChevronLeft, ChevronRight, Shield, Check } from "lucide-react";
+import { MapPin, Search, Crosshair, X, ChevronLeft, ChevronRight, Shield, Check } from "lucide-react";
 import { getAllWards, Ward, reverseGeocode } from "@/api/region.api";
 import { API_CODE } from "@/enums/api.enum";
 import Loading from "@/components/common/Loading";
@@ -23,11 +23,6 @@ interface CachedLocation {
   detectedLocation: DetectedLocation;
   matchedWardName?: string;
   timestamp: number;
-}
-
-interface LocationError {
-  code: number;
-  message: string;
 }
 
 // Helper functions
@@ -70,7 +65,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
   const [submitting, setSubmitting] = useState(false);
   const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<LocationError | null>(null);
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
   const selectedWardRef = useRef<HTMLButtonElement>(null);
@@ -83,15 +77,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
     const term = wardSearch.toLowerCase();
     return wards.filter(ward => ward.name.toLowerCase().includes(term));
   }, [wards, wardSearch]);
-
-  const getLocationErrorMessage = (error: GeolocationPositionError): string => {
-    switch (error.code) {
-      case 1: return "Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép trong cài đặt trình duyệt.";
-      case 2: return "Không thể xác định vị trí. Hãy kiểm tra GPS hoặc kết nối mạng của bạn.";
-      case 3: return "Quá thời gian chờ xác định vị trí. Vui lòng thử lại.";
-      default: return "Không thể lấy vị trí của bạn. Vui lòng chọn khu vực thủ công.";
-    }
-  };
 
   // Loại bỏ prefix hành chính để so sánh chính xác hơn
   const normalizeLocationName = (name: string): string => {
@@ -147,15 +132,14 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
     return null;
   };
 
-  // Refactored: không nhận wardList parameter, không auto-select ward
+  // GPS detect → thành công: hiện địa chỉ, thất bại: chuyển sang chọn thủ công
   const detectUserLocation = (): Promise<void> => {
     if (!navigator.geolocation) {
-      setLocationError({ code: 0, message: "Trình duyệt của bạn không hỗ trợ định vị GPS." });
+      setCurrentStep(2);
       return Promise.resolve();
     }
 
     setDetectingLocation(true);
-    setLocationError(null);
 
     return new Promise<void>((resolve) => {
       navigator.geolocation.getCurrentPosition(
@@ -163,7 +147,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
           try {
             const { latitude, longitude } = position.coords;
 
-            // Gọi API backend để reverse geocode (tránh CORS)
             const response = await reverseGeocode(latitude, longitude);
 
             if (response?.data) {
@@ -181,7 +164,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
               };
 
               setDetectedLocation(detectedLoc);
-              setLocationError(null);
 
               const addressComponents: string[] = [
                 wardName, districtName, cityName
@@ -195,30 +177,35 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
                 matchedWardName: matchedWard?.name
               });
 
+              console.log("[GPS] Thành công - reverse geocode OK", detectedLoc);
               setDetectingLocation(false);
               resolve();
             } else {
+              console.log("[GPS] Fail - reverse geocode trả null, response:", response);
               setDetectingLocation(false);
+              setCurrentStep(2);
               resolve();
             }
           } catch (error) {
-            console.error("Error geocoding:", error);
+            console.log("[GPS] Fail - reverse geocode throw error:", error);
             setDetectingLocation(false);
+            setCurrentStep(2);
             resolve();
           }
         },
         (error) => {
-          console.error("Geolocation error:", error);
-          // Fallback to cache on GPS error
+          console.log("[GPS] Fail - geolocation error:", error.code, error.message);
           const cached = getLocationFromCache();
           if (cached) {
-            setDetectedLocation({ ...cached.detectedLocation, fromCache: true });
+            console.log("[GPS] Fallback cache OK", cached.detectedLocation);
+            setDetectedLocation(ensureDisplayName({ ...cached.detectedLocation, fromCache: true }));
             setDetectingLocation(false);
             resolve();
             return;
           }
-          setLocationError({ code: error.code, message: getLocationErrorMessage(error) });
+          console.log("[GPS] Fail - không có cache, chuyển step 2");
           setDetectingLocation(false);
+          setCurrentStep(2);
           resolve();
         },
         { timeout: 15000, enableHighAccuracy: false, maximumAge: 600000 }
@@ -271,10 +258,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
     } else if (currentStep === 2) {
       handleConfirm();
     }
-  };
-
-  const handleRetryLocation = async () => {
-    await detectUserLocation();
   };
 
   useEffect(() => {
@@ -377,7 +360,7 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto px-4 pb-24 mt-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-24 mt-6">
           <div className="max-w-[672px] mx-auto">
 
             {/* STEP 1 — Method Selection */}
@@ -440,25 +423,6 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
                   </div>
                 </button>
 
-                {/* Location Error */}
-                {locationError && !detectingLocation && !detectedLocation && (
-                  <div className="mt-4 rounded-2xl bg-red-50 dark:bg-red-900/20 p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm text-red-600 dark:text-red-400">{locationError.message}</p>
-                        <button
-                          onClick={handleRetryLocation}
-                          className="mt-2 text-sm font-medium text-red-700 dark:text-red-300 inline-flex items-center gap-1.5"
-                          aria-label="Thử lại xác định vị trí"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Thử lại
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
@@ -566,7 +530,7 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
 
         {/* Bottom CTA — sticky bottom */}
         <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-[#E5E7EB] dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-          <div className="max-w-[672px] mx-auto px-4 sm:px-6 py-6">
+          <div className="max-w-[672px] mx-auto sm:px-6 py-6">
             <button
               onClick={handleContinue}
               disabled={
