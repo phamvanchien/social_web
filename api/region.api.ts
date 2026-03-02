@@ -15,7 +15,6 @@ export interface Ward {
   id: number;
   name: string;
   type: string;
-  oldDescription?: string;
   provinceId: number;
   province?: Province;
   createdAt: string;
@@ -40,5 +39,18 @@ export const getAllWards = async (): Promise<BaseResponseType<Ward[]>> => {
   return request({
     method: API_METHOD.GET,
     url: APP_CONFIG.API.PREFIX.regions + '/wards'
+  });
+}
+
+export interface ReverseGeocodeResult {
+  ward?: string;
+  district?: string;
+  city?: string;
+}
+
+export const reverseGeocode = async (lat: number, lon: number): Promise<BaseResponseType<ReverseGeocodeResult | null>> => {
+  return request({
+    method: API_METHOD.GET,
+    url: APP_CONFIG.API.PREFIX.regions + `/reverse-geocode?lat=${lat}&lon=${lon}`
   });
 }

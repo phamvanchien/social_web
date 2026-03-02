@@ -21,7 +21,7 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-  Smile
+  Send
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
@@ -555,7 +555,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       <div className="flex items-center gap-3 px-4 pb-2">
         <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-gray-100">
           <Image
-            src={user?.avatar || "/images/test/avatar.png"}
+            src={post.user?.avatar}
             alt={fullName}
             fill
             sizes="40px"
@@ -711,7 +711,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
           </button>
 
           <button
-            className="flex items-center gap-1.5 text-gray-600 cursor-pointer group"
+            className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer group"
             onClick={handleToggleComments}
           >
             <IconComment className="w-6 h-6" />
@@ -720,7 +720,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
           <div className="relative">
             <button
-              className="flex items-center gap-1.5 text-gray-600 cursor-pointer group"
+              className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer group"
               onClick={() => setShowSharePopup(!showSharePopup)}
             >
               <IconShare className="w-6 h-6" />
@@ -845,7 +845,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                                 className="w-5 h-5"
                               />
                             </span>
-                            <span className="text-[13px] text-gray-600">{getCommentLikeCount(comment)}</span>
+                            <span className="text-[13px] text-gray-600 dark:text-gray-400">{getCommentLikeCount(comment)}</span>
                           </button>
                           <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <MoreHorizontal className="w-5 h-5" />
@@ -904,7 +904,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                                           className="w-4 h-4"
                                         />
                                       </span>
-                                      <span className="text-[12px] text-gray-600">{getCommentLikeCount(reply)}</span>
+                                      <span className="text-[12px] text-gray-600 dark:text-gray-400">{getCommentLikeCount(reply)}</span>
                                     </button>
                                   </div>
                                 </div>
@@ -1018,14 +1018,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
                 disabled={isSubmitting}
               />
               <button
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ml-2"
+                className={`ml-2 transition-colors ${commentText.trim() ? 'text-blue-500 hover:text-blue-600' : 'text-gray-400'}`}
                 onClick={handleSubmitComment}
                 disabled={isSubmitting || !commentText.trim()}
               >
                 {isSubmitting ? (
-                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
                 ) : (
-                  <Smile className="w-5 h-5" />
+                  <Send className="w-5 h-5" />
                 )}
               </button>
             </div>

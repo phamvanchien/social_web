@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Plus, Search, User, Settings, HelpCircle, LogOut, Menu, X, Clock, TrendingUp } from "lucide-react";
+import { Plus, Search, User, Settings, HelpCircle, LogOut, Menu } from "lucide-react";
 import CreatePost from "./posts/CreatePost";
+import NotificationBell from "../common/NotificationBell";
 import { useSelector } from "react-redux";
 import { RootState, useAppDispatch } from "@/reduxs/store.redux";
 import { getCookie, removeCookie } from "@/utils/cookie.utils";
@@ -108,16 +109,7 @@ export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
               </button>
 
               {/* Notification Button */}
-              <button
-                className="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center transition"
-                title="Thông báo"
-                aria-label="Thông báo"
-              >
-                <Bell className="w-6 h-6" strokeWidth={1.5} />
-                <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[11px] font-medium flex items-center justify-center">
-                  18+
-                </span>
-              </button>
+              <NotificationBell />
 
               {/* User Avatar */}
               <div className="relative" ref={dropdownRef}>
@@ -234,16 +226,7 @@ export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
               </button>
 
               {/* Notification Button */}
-              <button
-                className="relative w-10 h-10 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center transition"
-                title="Thông báo"
-                aria-label="Thông báo"
-              >
-                <Bell className="w-6 h-6" strokeWidth={1.5} />
-                <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[11px] font-medium flex items-center justify-center">
-                  18+
-                </span>
-              </button>
+              <NotificationBell />
 
               {/* User Avatar with Dropdown */}
               <div className="relative" ref={dropdownRef}>

@@ -33,9 +33,16 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# screenshots (agent-browser)
+/screenshots
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude
+.claude
+.mcp.json

@@ -15,6 +15,7 @@ export interface AppConfigType {
       comments: string
       user: string
       regions: string
+      notification: string
     }
   }
 }

@@ -58,15 +58,21 @@ const Loading: React.FC<LoadingProps> = ({
   }
 
   // spinner
+  const spinnerStyle = color
+    ? { borderColor: `${color}30`, borderTopColor: color }
+    : undefined;
+
   return (
     <div
       role="status"
       aria-label={label}
       className={clsx(
-        "inline-block animate-spin rounded-full border-indigo-500/30 border-t-indigo-500",
+        "inline-block animate-spin rounded-full",
+        !color && "border-indigo-500/30 border-t-indigo-500",
         sizeMap[size],
         className
       )}
+      style={spinnerStyle}
     >
       <span className="sr-only">{label}</span>
     </div>

@@ -1,123 +1,304 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { MapPin, Search, Building2 } from "lucide-react";
-import { getAllWards, Ward } from "@/api/region.api";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { MapPin, Search, Crosshair, AlertCircle, RefreshCw, X, ChevronLeft, ChevronRight, Shield, Check } from "lucide-react";
+import { getAllWards, Ward, reverseGeocode } from "@/api/region.api";
 import { API_CODE } from "@/enums/api.enum";
 import Loading from "@/components/common/Loading";
-import Input from "@/components/common/Input";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCX7Yx5-P_1m7tuM-P9zIk-EOhcad-XoeA";
-const DEFAULT_WARD_ID = 1; // Phường mặc định nếu không lấy được vị trí
+const LOCATION_CACHE_KEY = 'lacial_detected_location';
+const LOCATION_CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 giờ
+
+interface DetectedLocation {
+  ward?: string;
+  district?: string;
+  city?: string;
+  displayName: string; // Build từ [ward, district, city].filter(Boolean).join(', ')
+  fromCache?: boolean;
+}
+
+interface CachedLocation {
+  lat: number;
+  lon: number;
+  detectedLocation: DetectedLocation;
+  matchedWardName?: string;
+  timestamp: number;
+}
+
+interface LocationError {
+  code: number;
+  message: string;
+}
+
+// Helper functions
+const saveLocationToCache = (data: Omit<CachedLocation, 'timestamp'>) => {
+  try {
+    const cacheData: CachedLocation = { ...data, timestamp: Date.now() };
+    localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error('Error saving location to cache:', error);
+  }
+};
+
+const getLocationFromCache = (): CachedLocation | null => {
+  try {
+    const cached = localStorage.getItem(LOCATION_CACHE_KEY);
+    if (!cached) return null;
+    const data: CachedLocation = JSON.parse(cached);
+    if (Date.now() - data.timestamp > LOCATION_CACHE_EXPIRY) {
+      localStorage.removeItem(LOCATION_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch (error) {
+    console.error('Error reading location from cache:', error);
+    return null;
+  }
+};
 
 interface WardSelectionViewProps {
   onWardSelected: (ward: Ward) => Promise<void>;
   defaultWardId?: number;
+  onSkip?: () => void;
 }
 
-const WardSelectionView = ({ onWardSelected, defaultWardId }: WardSelectionViewProps) => {
+const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelectionViewProps) => {
   const [wards, setWards] = useState<Ward[]>([]);
-  const [filteredWards, setFilteredWards] = useState<Ward[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [wardSearch, setWardSearch] = useState("");
   const [selectedWard, setSelectedWard] = useState<Ward | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<LocationError | null>(null);
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
   const selectedWardRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Function to find ward by name from geocoding result
+  // Filter wards by wardSearch — flat list, no grouping
+  const filteredWards = useMemo(() => {
+    if (!wardSearch.trim()) return wards;
+    const term = wardSearch.toLowerCase();
+    return wards.filter(ward => ward.name.toLowerCase().includes(term));
+  }, [wards, wardSearch]);
+
+  const getLocationErrorMessage = (error: GeolocationPositionError): string => {
+    switch (error.code) {
+      case 1: return "Bạn đã từ chối quyền truy cập vị trí. Vui lòng cho phép trong cài đặt trình duyệt.";
+      case 2: return "Không thể xác định vị trí. Hãy kiểm tra GPS hoặc kết nối mạng của bạn.";
+      case 3: return "Quá thời gian chờ xác định vị trí. Vui lòng thử lại.";
+      default: return "Không thể lấy vị trí của bạn. Vui lòng chọn khu vực thủ công.";
+    }
+  };
+
+  // Loại bỏ prefix hành chính để so sánh chính xác hơn
+  const normalizeLocationName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/^(phường|xã|thị trấn|quận|huyện|thành phố|tp\.?)\s+/i, '')
+      .trim();
+  };
+
+  // Kiểm tra 2 tên có tương đương không (cho phép sai lệch nhỏ như dấu, khoảng trắng)
+  const isNameMatch = (name1: string, name2: string): boolean => {
+    // Exact match
+    if (name1 === name2) return true;
+
+    // Nếu độ dài chênh lệch quá nhiều (> 3 ký tự), không match
+    // Tránh "An Nhơn" match với "An Nhơn Tây"
+    if (Math.abs(name1.length - name2.length) > 3) return false;
+
+    // Chỉ match nếu một trong hai chứa hoàn toàn tên kia VÀ độ dài gần bằng nhau
+    if (name1.includes(name2) || name2.includes(name1)) {
+      return true;
+    }
+
+    return false;
+  };
+
   const findWardByName = (wardList: Ward[], addressComponents: string[]): Ward | null => {
-    for (const component of addressComponents) {
-      const normalizedComponent = component.toLowerCase().trim();
+    const [wardComponent] = addressComponents;
 
+    if (wardComponent) {
+      const normalizedWard = normalizeLocationName(wardComponent);
+
+      // Tìm exact match trước (ưu tiên cao nhất)
       for (const ward of wardList) {
-        const wardName = ward.name.toLowerCase();
-        if (normalizedComponent.includes(wardName) || wardName.includes(normalizedComponent)) {
+        const wardName = normalizeLocationName(ward.name);
+        if (normalizedWard === wardName) {
           return ward;
         }
-        if (ward.oldDescription) {
-          const oldDesc = ward.oldDescription.toLowerCase();
-          if (oldDesc.includes(normalizedComponent)) {
-            return ward;
-          }
+      }
+
+      // Tìm match gần đúng trong tên (với kiểm tra độ dài)
+      for (const ward of wardList) {
+        const wardName = normalizeLocationName(ward.name);
+        if (isNameMatch(normalizedWard, wardName)) {
+          return ward;
         }
       }
     }
+
+    // Không match theo district - chỉ match theo tên phường từ GPS
+    // Nếu phường GPS không có trong database, trả về null để user chọn thủ công
     return null;
   };
 
-  // Function to detect user location and find matching ward
-  const detectUserLocation = (wardList: Ward[]): Promise<Ward | null> => {
+  // Refactored: không nhận wardList parameter, không auto-select ward
+  const detectUserLocation = (): Promise<void> => {
     if (!navigator.geolocation) {
-      return Promise.resolve(null);
+      setLocationError({ code: 0, message: "Trình duyệt của bạn không hỗ trợ định vị GPS." });
+      return Promise.resolve();
     }
 
-    return new Promise<Ward | null>((resolve) => {
+    setDetectingLocation(true);
+    setLocationError(null);
+
+    return new Promise<void>((resolve) => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
 
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=vi&key=${GOOGLE_MAPS_API_KEY}`
-            );
-            const data = await response.json();
+            // Gọi API backend để reverse geocode (tránh CORS)
+            const response = await reverseGeocode(latitude, longitude);
 
-            if (data.status === "OK" && data.results.length > 0) {
-              const addressComponents: string[] = [];
-              for (const result of data.results) {
-                for (const component of result.address_components) {
-                  addressComponents.push(component.long_name);
-                  addressComponents.push(component.short_name);
-                }
-              }
+            if (response?.data) {
+              const { ward: wardName, district: districtName, city: cityName } = response.data;
 
-              const matchedWard = findWardByName(wardList, addressComponents);
-              resolve(matchedWard);
+              const displayName = [wardName, districtName, cityName]
+                .filter(Boolean)
+                .join(', ');
+
+              const detectedLoc: DetectedLocation = {
+                ward: wardName || '',
+                district: districtName || '',
+                city: cityName || '',
+                displayName
+              };
+
+              setDetectedLocation(detectedLoc);
+              setLocationError(null);
+
+              const addressComponents: string[] = [
+                wardName, districtName, cityName
+              ].filter(Boolean) as string[];
+
+              const matchedWard = findWardByName(wards, addressComponents);
+
+              saveLocationToCache({
+                lat: latitude, lon: longitude,
+                detectedLocation: detectedLoc,
+                matchedWardName: matchedWard?.name
+              });
+
+              setDetectingLocation(false);
+              resolve();
             } else {
-              resolve(null);
+              setDetectingLocation(false);
+              resolve();
             }
           } catch (error) {
             console.error("Error geocoding:", error);
-            resolve(null);
+            setDetectingLocation(false);
+            resolve();
           }
         },
-        () => resolve(null),
-        { timeout: 10000, enableHighAccuracy: true }
+        (error) => {
+          console.error("Geolocation error:", error);
+          // Fallback to cache on GPS error
+          const cached = getLocationFromCache();
+          if (cached) {
+            setDetectedLocation({ ...cached.detectedLocation, fromCache: true });
+            setDetectingLocation(false);
+            resolve();
+            return;
+          }
+          setLocationError({ code: error.code, message: getLocationErrorMessage(error) });
+          setDetectingLocation(false);
+          resolve();
+        },
+        { timeout: 15000, enableHighAccuracy: false, maximumAge: 600000 }
       );
     });
   };
 
+  // Rebuild displayName từ cache cũ nếu bị rỗng
+  const ensureDisplayName = (loc: DetectedLocation): DetectedLocation => {
+    if (loc.displayName) return loc;
+    return {
+      ...loc,
+      displayName: [loc.ward, loc.district, loc.city].filter(Boolean).join(', ')
+    };
+  };
+
+  // GPS button handler: check cache first, then call GPS detect
+  const handleGpsClick = async () => {
+    const cached = getLocationFromCache();
+    if (cached) {
+      setDetectedLocation(ensureDisplayName({ ...cached.detectedLocation, fromCache: true }));
+      return;
+    }
+    await detectUserLocation();
+  };
+
+  // Manual selection button handler: navigate to step 2
+  const handleManualClick = () => {
+    setCurrentStep(2);
+  };
+
+  // Back button handler: return to step 1, clear ward search
+  const handleBack = () => {
+    setCurrentStep(1);
+    setWardSearch("");
+  };
+
+  // Continue/confirm handler for both steps
+  const handleContinue = () => {
+    if (currentStep === 1 && detectedLocation) {
+      // Pre-select ward matching GPS result
+      const addressComponents = [
+        detectedLocation.ward,
+        detectedLocation.district,
+        detectedLocation.city
+      ].filter(Boolean) as string[];
+      const matchedWard = findWardByName(wards, addressComponents);
+      if (matchedWard) setSelectedWard(matchedWard);
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      handleConfirm();
+    }
+  };
+
+  const handleRetryLocation = async () => {
+    await detectUserLocation();
+  };
+
   useEffect(() => {
-    const fetchWards = async () => {
+    const init = async () => {
       try {
         const response = await getAllWards();
         if (response && response.code === API_CODE.OK) {
           const wardList = response.data;
           setWards(wardList);
-          setFilteredWards(wardList);
 
-          // Ưu tiên 1: Nếu có wardId trong cookie → dùng luôn
+          // Nếu có defaultWardId → pre-navigate sang Step 2
           if (defaultWardId) {
             const defaultWard = wardList.find((w: Ward) => w.id === defaultWardId);
             if (defaultWard) {
               setSelectedWard(defaultWard);
-              setLoading(false);
-              return;
+              setCurrentStep(2);
             }
           }
 
-          // Ưu tiên 2: Lấy từ GPS location
-          const detectedWard = await detectUserLocation(wardList);
-          if (detectedWard) {
-            setSelectedWard(detectedWard);
-            setLoading(false);
-            return;
-          }
-
-          // Ưu tiên 3: Dùng phường mặc định
-          const fallbackWard = wardList.find((w: Ward) => w.id === DEFAULT_WARD_ID) || wardList[0];
-          if (fallbackWard) {
-            setSelectedWard(fallbackWard);
+          // KHÔNG gọi detectUserLocation auto nữa
+          // Chỉ check cache để hiện detected state ở Step 1
+          const cached = getLocationFromCache();
+          if (cached && !defaultWardId) {
+            setDetectedLocation(ensureDisplayName({ ...cached.detectedLocation, fromCache: true }));
           }
         }
       } catch (error) {
@@ -126,38 +307,18 @@ const WardSelectionView = ({ onWardSelected, defaultWardId }: WardSelectionViewP
         setLoading(false);
       }
     };
-
-    fetchWards();
+    init();
   }, [defaultWardId]);
 
-  // Scroll to selected ward when it's auto-selected
   useEffect(() => {
     if (selectedWard && selectedWardRef.current) {
       setTimeout(() => {
-        selectedWardRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        selectedWardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 100);
     }
   }, [selectedWard?.id]);
 
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredWards(wards);
-    } else {
-      const filtered = wards.filter(
-        (ward) =>
-          ward.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ward.oldDescription?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredWards(filtered);
-    }
-  }, [searchTerm, wards]);
-
-  const handleWardClick = (ward: Ward) => {
-    setSelectedWard(ward);
-  };
+  const handleWardClick = (ward: Ward) => setSelectedWard(ward);
 
   const handleConfirm = async () => {
     if (selectedWard) {
@@ -171,13 +332,10 @@ const WardSelectionView = ({ onWardSelected, defaultWardId }: WardSelectionViewP
     }
   };
 
-  // Group wards by type
-  const phuongWards = filteredWards.filter((w) => w.type === "phường");
-  const xaWards = filteredWards.filter((w) => w.type === "xã");
-
+  // Loading state
   if (loading) {
     return (
-      <section className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950">
+      <section className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loading size="lg" variant="spinner" />
           <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
@@ -189,153 +347,259 @@ const WardSelectionView = ({ onWardSelected, defaultWardId }: WardSelectionViewP
   }
 
   return (
-    <section className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-950 px-4 py-12">
-      {/* Background Decoration */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-4 top-0 h-72 w-72 rounded-full bg-blue-200/30 dark:bg-blue-900/20 blur-3xl" />
-        <div className="absolute -right-4 bottom-0 h-72 w-72 rounded-full bg-purple-200/30 dark:bg-purple-900/20 blur-3xl" />
-      </div>
+    <section className="min-h-screen bg-white dark:bg-gray-900">
+      <div className="flex flex-col min-h-screen">
 
-      {/* Ward Selection Card */}
-      <div className="relative w-full max-w-4xl">
-        <div className="rounded-3xl bg-white dark:bg-gray-900 p-8 shadow-xl ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-sm">
-          {/* Header */}
-          <div className="mb-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
-              <MapPin className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Chọn khu vực của bạn
-            </h1>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              TP. Hồ Chí Minh - Chọn phường/xã nơi bạn sinh sống
-            </p>
-          </div>
-
-          {/* Search */}
-          <div className="mb-6 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Tìm kiếm phường/xã..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-12 pl-12 rounded-xl border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 transition focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
-            />
-          </div>
-
-          {/* Wards Grid */}
-          <div className="max-h-[400px] overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-            {/* Phường Section */}
-            {phuongWards.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Phường ({phuongWards.length})
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {phuongWards.map((ward) => (
-                    <button
-                      key={ward.id}
-                      ref={selectedWard?.id === ward.id ? selectedWardRef : null}
-                      onClick={() => handleWardClick(ward)}
-                      className={`p-3 rounded-xl text-left transition-all duration-200 ${
-                        selectedWard?.id === ward.id
-                          ? "bg-blue-600 text-white shadow-lg scale-[1.02]"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:shadow"
-                      }`}
-                    >
-                      <p className="font-medium text-sm truncate">{ward.name}</p>
-                      <p
-                        className={`text-xs mt-1 truncate ${
-                          selectedWard?.id === ward.id
-                            ? "text-blue-100"
-                            : "text-gray-500 dark:text-gray-400"
-                        }`}
-                      >
-                        {ward.type}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+        {/* Header */}
+        <div className="pt-6 sm:pt-8 px-4 sm:px-6">
+          <div className="max-w-[672px] mx-auto">
+            {currentStep === 2 && (
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-2 mb-4 text-[#6B7280] dark:text-gray-400 text-sm font-medium hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+                aria-label="Quay lại bước trước"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Quay lại</span>
+              </button>
             )}
-
-            {/* Xã Section */}
-            {xaWards.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Xã ({xaWards.length})
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {xaWards.map((ward) => (
-                    <button
-                      key={ward.id}
-                      ref={selectedWard?.id === ward.id ? selectedWardRef : null}
-                      onClick={() => handleWardClick(ward)}
-                      className={`p-3 rounded-xl text-left transition-all duration-200 ${
-                        selectedWard?.id === ward.id
-                          ? "bg-blue-600 text-white shadow-lg scale-[1.02]"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:shadow"
-                      }`}
-                    >
-                      <p className="font-medium text-sm truncate">{ward.name}</p>
-                      <p
-                        className={`text-xs mt-1 truncate ${
-                          selectedWard?.id === ward.id
-                            ? "text-blue-100"
-                            : "text-gray-500 dark:text-gray-400"
-                        }`}
-                      >
-                        {ward.type}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filteredWards.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                Không tìm thấy khu vực phù hợp
-              </div>
-            )}
-          </div>
-
-          {/* Selected Ward Info */}
-          {selectedWard && (
-            <div className="mt-6 rounded-xl bg-blue-50 dark:bg-blue-900/20 p-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Khu vực đã chọn:{" "}
-                <span className="text-blue-600 dark:text-blue-400">
-                  {selectedWard.type} {selectedWard.name}
-                </span>
+            <div className="text-center">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#1A1A2E] dark:text-white leading-tight mb-2">
+                {currentStep === 1 ? "Bạn đang ở đâu?" : "Chọn Phường/Xã"}
+              </h1>
+              <p className="text-sm sm:text-base text-[#6B7280] dark:text-gray-400 leading-relaxed">
+                {currentStep === 1
+                  ? "Chúng tôi sẽ hiển thị bài viết và sự kiện từ khu vực của bạn"
+                  : "Chọn khu vực bạn đang sinh sống"}
               </p>
-              {selectedWard.oldDescription && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {selectedWard.oldDescription}
-                </p>
-              )}
             </div>
-          )}
-
-          {/* Confirm Button */}
-          <button
-            onClick={handleConfirm}
-            disabled={!selectedWard || submitting}
-            className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <div className="flex items-center justify-center gap-2">
-                <Loading size="sm" variant="spinner" />
-                <span>Đang xác nhận...</span>
-              </div>
-            ) : (
-              "Xác nhận khu vực"
-            )}
-          </button>
+          </div>
         </div>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto px-4 pb-24 mt-6">
+          <div className="max-w-[672px] mx-auto">
+
+            {/* STEP 1 — Method Selection */}
+            {currentStep === 1 && (
+              <>
+                {/* Privacy Notice */}
+                <div className="flex gap-3 bg-[#F0FDF4] dark:bg-green-900/20 rounded-2xl p-4 mb-4">
+                  <Shield className="w-5 h-5 text-emerald-500 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                    Chỉ dùng để hiển thị nội dung phù hợp. Chúng tôi không thu thập dữ liệu cá nhân của bạn.
+                  </p>
+                </div>
+
+                {/* GPS Button */}
+                <button
+                  onClick={handleGpsClick}
+                  disabled={detectingLocation}
+                  className="w-full rounded-2xl p-6 text-left bg-[#0C8BDA] mb-4 transition-all active:scale-[0.98] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                  aria-label="Tự động xác định vị trí bằng GPS"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <Crosshair className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 pt-1">
+                      <h3 className="text-lg font-bold text-white mb-1.5">
+                        Tự động xác định vị trí
+                      </h3>
+                      {detectedLocation && !detectingLocation && detectedLocation.displayName ? (
+                        <p className="text-[15px] text-white/85 leading-relaxed">{detectedLocation.displayName}</p>
+                      ) : detectingLocation ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                          <span className="text-[15px] text-white/85 font-medium">Đang xác định...</span>
+                        </div>
+                      ) : (
+                        <p className="text-[15px] text-white/85 leading-relaxed">Sử dụng vị trí GPS của thiết bị</p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Manual Button */}
+                <button
+                  onClick={handleManualClick}
+                  className="w-full rounded-2xl p-6 text-left bg-white dark:bg-gray-800 border-2 border-[#E5E7EB] dark:border-gray-700 transition-all active:scale-[0.98] hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  aria-label="Chọn vị trí thủ công"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-[#EBF5FF] dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-7 h-7 text-[#0C8BDA] dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-[#1A1A2E] dark:text-white mb-1">Chọn vị trí thủ công</h3>
+                        <p className="text-[15px] text-[#6B7280] dark:text-gray-400">Tự chọn phường/xã</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-6 h-6 text-gray-400 flex-shrink-0" />
+                  </div>
+                </button>
+
+                {/* Location Error */}
+                {locationError && !detectingLocation && !detectedLocation && (
+                  <div className="mt-4 rounded-2xl bg-red-50 dark:bg-red-900/20 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-red-600 dark:text-red-400">{locationError.message}</p>
+                        <button
+                          onClick={handleRetryLocation}
+                          className="mt-2 text-sm font-medium text-red-700 dark:text-red-300 inline-flex items-center gap-1.5"
+                          aria-label="Thử lại xác định vị trí"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Thử lại
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* STEP 2 — Ward Selection */}
+            {currentStep === 2 && (
+              <>
+                {/* Search bar — sticky top */}
+                <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 pb-3 pt-1">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Tìm kiếm phường/xã..."
+                      value={wardSearch}
+                      onChange={(e) => setWardSearch(e.target.value)}
+                      className="w-full rounded-xl border-none bg-[#F3F4F6] dark:bg-gray-800 py-3 pl-12 pr-4 text-base text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#0C8BDA]/30"
+                      aria-label="Tìm kiếm phường/xã"
+                    />
+                    {wardSearch && (
+                      <button
+                        onClick={() => {
+                          setWardSearch("");
+                          searchInputRef.current?.focus();
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        aria-label="Xóa tìm kiếm"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section title */}
+                <h3 className="text-sm font-bold text-[#1A1A2E] dark:text-gray-200 mb-3 px-1">
+                  Chọn phường/xã
+                </h3>
+
+                {/* Ward list — vertical list with dividers */}
+                <div
+                  ref={listContainerRef}
+                  className="bg-[#F9FAFB] dark:bg-gray-800 rounded-xl overflow-hidden max-h-[50vh] overflow-y-auto overscroll-contain"
+                  role="listbox"
+                  aria-label="Danh sách phường/xã"
+                >
+                  {filteredWards.length > 0 ? (
+                    filteredWards.map((ward, index) => (
+                      <React.Fragment key={ward.id}>
+                        <button
+                          ref={selectedWard?.id === ward.id ? selectedWardRef : null}
+                          onClick={() => handleWardClick(ward)}
+                          className={`w-full px-4 py-3 text-left transition-colors ${
+                            selectedWard?.id === ward.id
+                              ? "bg-[#EFF6FF] dark:bg-blue-900/20"
+                              : "hover:bg-[#F3F4F6] dark:hover:bg-gray-700 active:bg-[#E5E7EB] dark:active:bg-gray-600"
+                          }`}
+                          role="option"
+                          aria-selected={selectedWard?.id === ward.id}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-base ${
+                              selectedWard?.id === ward.id
+                                ? "text-[#0C8BDA] dark:text-blue-400 font-medium"
+                                : "font-normal text-[#4B5563] dark:text-gray-300"
+                            }`}>
+                              {ward.name}
+                            </span>
+                            {selectedWard?.id === ward.id && (
+                              <Check className="w-5 h-5 text-[#0C8BDA] dark:text-blue-400 flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                        {index < filteredWards.length - 1 && (
+                          <div className="h-px bg-[#E5E7EB] dark:bg-gray-700" />
+                        )}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <div className="text-center py-12">
+                      <Search className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500 dark:text-gray-400 font-medium">Không tìm thấy phường/xã phù hợp</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Thử tìm kiếm với từ khóa khác</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Location Preview */}
+                {selectedWard && (
+                  <div
+                    className="flex items-center gap-3 bg-[#EBF5FF] dark:bg-blue-900/20 rounded-xl p-4 mt-4"
+                    style={{ animation: "fadeIn 0.3s ease-out" }}
+                  >
+                    <MapPin className="w-5 h-5 text-[#0C8BDA] dark:text-blue-400 flex-shrink-0" />
+                    <span className="text-[15px] font-semibold text-[#0C8BDA] dark:text-blue-400">
+                      {selectedWard.name}{selectedWard.province?.name ? `, ${selectedWard.province.name}` : ''}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
+          </div>
+        </div>
+
+        {/* Bottom CTA — sticky bottom */}
+        <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-[#E5E7EB] dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+          <div className="max-w-[672px] mx-auto px-4 sm:px-6 py-6">
+            <button
+              onClick={handleContinue}
+              disabled={
+                (currentStep === 1 && (!detectedLocation || detectingLocation)) ||
+                (currentStep === 2 && (!selectedWard || submitting))
+              }
+              className="w-full h-14 rounded-2xl bg-[#0C8BDA] text-white text-[17px] font-bold transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+            >
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loading size="sm" variant="spinner" />
+                  Đang xác nhận...
+                </span>
+              ) : (
+                "Tiếp tục"
+              )}
+            </button>
+            {currentStep === 1 && !detectedLocation && !detectingLocation && (
+              <p className="mt-3 text-center text-[13px] text-gray-400 dark:text-gray-500">
+                Vui lòng chọn phương thức xác định vị trí
+              </p>
+            )}
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                className="w-full mt-3 text-center text-sm text-gray-500 dark:text-gray-400 font-medium hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                Bỏ qua
+              </button>
+            )}
+          </div>
+        </div>
+
       </div>
     </section>
   );

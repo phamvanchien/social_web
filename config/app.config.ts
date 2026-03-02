@@ -14,7 +14,8 @@ export const APP_CONFIG: AppConfigType = {
       post: '/post',
       comments: '/comments',
       user: '/user',
-      regions: '/regions'
+      regions: '/regions',
+      notification: '/notification'
     }
   }
 }

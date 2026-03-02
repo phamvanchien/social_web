@@ -17,7 +17,7 @@ export const setCookie = (name: string, value: string, options?: CookieOptions) 
     cookieStr += `; expires=${date.toUTCString()}`;
   } else if (typeof options.expires === 'number') {
     const date = new Date();
-    date.setTime(date.getTime() + options.expires * 60 * 60 * 1000);
+    date.setTime(date.getTime() + options.expires);
     cookieStr += `; expires=${date.toUTCString()}`;
   } else {
     cookieStr += `; expires=${options.expires.toUTCString()}`;

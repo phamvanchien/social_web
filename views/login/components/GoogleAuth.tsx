@@ -30,9 +30,20 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ setErrorMessage, code }) => {
           expires: APP_CONFIG.TOKEN_EXPIRE_TIME,
           path: '/',
           sameSite: 'lax',
-          secure: true
+          secure: APP_CONFIG.ENVIROMENT === 'production'
         });
-        window.location.href = "/";
+        setCookie(APP_AUTH.COOKIE_AUTH_USER, JSON.stringify(response.data.user), {
+          expires: APP_CONFIG.TOKEN_EXPIRE_TIME,
+          path: '/',
+          sameSite: 'lax',
+          secure: APP_CONFIG.ENVIROMENT === 'production'
+        });
+
+        if (response.data.target === 'location') {
+          window.location.href = "/location";
+        } else {
+          window.location.href = "/";
+        }
         return;
       }
       setErrorMessage({
