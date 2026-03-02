@@ -333,13 +333,13 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
   }
 
   return (
-    <section className="min-h-screen bg-white dark:bg-gray-900">
+    <section className="min-h-screen bg-white dark:bg-gray-900 relative z-10">
       <div className="flex flex-col min-h-screen">
 
         {/* Header */}
         <div className="pt-6 sm:pt-8 px-4 sm:px-6">
           <div className="max-w-[672px] mx-auto">
-            {currentStep === 2 && (
+            {currentStep === 2 && detectedLocation && (
               <button
                 onClick={handleBack}
                 className="flex items-center gap-2 mb-4 text-[#6B7280] dark:text-gray-400 text-sm font-medium hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
