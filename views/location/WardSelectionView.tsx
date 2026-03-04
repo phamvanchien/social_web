@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { MapPin, Search, Crosshair, X, ChevronLeft, ChevronRight, Shield, Check } from "lucide-react";
 import { getAllWards, Ward, reverseGeocode } from "@/api/region.api";
 import { API_CODE } from "@/enums/api.enum";
+import Button from "@/components/common/Button";
 import Loading from "@/components/common/Loading";
 
 const LOCATION_CACHE_KEY = 'lacial_detected_location';
@@ -244,17 +245,28 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
   };
 
   // Continue/confirm handler for both steps
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep === 1 && detectedLocation) {
-      // Pre-select ward matching GPS result
       const addressComponents = [
         detectedLocation.ward,
         detectedLocation.district,
         detectedLocation.city
       ].filter(Boolean) as string[];
       const matchedWard = findWardByName(wards, addressComponents);
-      if (matchedWard) setSelectedWard(matchedWard);
-      setCurrentStep(2);
+
+      if (matchedWard) {
+        // GPS match thanh cong → goi API ngay, khong chuyen sang Step 2
+        setSubmitting(true);
+        try {
+          await onWardSelected(matchedWard);
+        } catch (error) {
+          console.error("Error confirming GPS ward:", error);
+          setSubmitting(false);
+        }
+      } else {
+        // GPS khong match duoc ward → chuyen sang Step 2 de user tu chon
+        setCurrentStep(2);
+      }
     } else if (currentStep === 2) {
       handleConfirm();
     }
@@ -533,24 +545,19 @@ const WardSelectionView = ({ onWardSelected, defaultWardId, onSkip }: WardSelect
 
         {/* Bottom CTA — sticky bottom */}
         <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-[#E5E7EB] dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-          <div className="max-w-[672px] mx-auto sm:px-6 py-6">
-            <button
+          <div className="max-w-[672px] mx-auto py-6">
+            <Button
               onClick={handleContinue}
+              loading={submitting}
+              loadingText="Đang xác nhận..."
               disabled={
-                (currentStep === 1 && (!detectedLocation || detectingLocation)) ||
+                (currentStep === 1 && (!detectedLocation || detectingLocation || submitting)) ||
                 (currentStep === 2 && (!selectedWard || submitting))
               }
-              className="w-full h-14 rounded-2xl bg-[#0C8BDA] text-white text-[17px] font-bold transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+              className="w-full h-14 rounded-2xl text-[17px] font-bold hover:shadow-lg active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
             >
-              {submitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loading size="sm" variant="spinner" />
-                  Đang xác nhận...
-                </span>
-              ) : (
-                "Tiếp tục"
-              )}
-            </button>
+              Tiếp tục
+            </Button>
             {currentStep === 1 && !detectedLocation && !detectingLocation && (
               <p className="mt-3 text-center text-[13px] text-gray-400 dark:text-gray-500">
                 Vui lòng chọn phương thức xác định vị trí

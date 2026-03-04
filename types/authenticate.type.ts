@@ -22,9 +22,14 @@ export interface RequestGoogleAuthCallback {
   fromInvite: string | null
 }
 
+export interface RequestVerifyOtpType {
+  email: string
+  otp: string
+}
+
 export interface RequestRecoveryPasswordType {
   email: string
-  hash: string
+  otp: string
   password: string,
   confirm_password: string
 }
@@ -47,4 +52,23 @@ export interface ResponseAuthenticateGoogleType extends BaseResponseType {
 
 export interface ResponseAuthenticateActionType extends BaseResponseType {
   data: boolean
+}
+
+export interface RequestRegisterSendOtpType {
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  password: string
+  confirm_password: string
+}
+
+export interface RequestRegisterVerifyOtpType {
+  email: string
+  otp: string
+}
+
+export interface RequestRegisterCompleteType {
+  email: string
+  otp: string
 }

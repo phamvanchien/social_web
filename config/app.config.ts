@@ -15,7 +15,13 @@ export const APP_CONFIG: AppConfigType = {
       comments: '/comments',
       user: '/user',
       regions: '/regions',
-      notification: '/notification'
+      notification: '/notification',
+      forgot_password: '/authenticate/forgot-password',
+      verify_otp: '/authenticate/verify-otp',
+      recovery_password: '/authenticate/recovery-password',
+      register_send_otp: '/authenticate/register/send-otp',
+      register_verify_otp: '/authenticate/register/verify-otp',
+      register_complete: '/authenticate/register/complete'
     }
   }
 }

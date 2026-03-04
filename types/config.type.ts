@@ -16,6 +16,12 @@ export interface AppConfigType {
       user: string
       regions: string
       notification: string
+      forgot_password: string,
+      verify_otp: string,
+      recovery_password: string,
+      register_send_otp: string,
+      register_verify_otp: string,
+      register_complete: string
     }
   }
 }

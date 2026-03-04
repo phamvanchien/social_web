@@ -1,7 +1,27 @@
+import Loading from "@/components/common/Loading";
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'warning' | 'info' | 'success' | 'light';
+
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'danger' | 'warning' | 'info' | 'success' | 'light';
+  variant?: ButtonVariant;
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
   fullWidth?: boolean;
+  loading?: boolean;
+  loadingText?: string;
+};
+
+// Spinner color tuong ung voi tung variant
+// primary/danger/info/success → nen toi (text-white) → spinner trang
+// secondary/light → nen sang → spinner toi
+// warning → nen vang, text toi → spinner toi
+const spinnerColorMap: Record<ButtonVariant, string> = {
+  primary: 'white',
+  danger: 'white',
+  info: 'white',
+  success: 'white',
+  secondary: '#4B5563',
+  light: '#4B5563',
+  warning: '#111827',
 };
 
 export default function Button({
@@ -11,10 +31,14 @@ export default function Button({
   fullWidth = false,
   className = '',
   disabled,
+  loading = false,
+  loadingText,
   ...props
 }: ButtonProps) {
+  const isDisabled = disabled || loading;
+
   const base = `
-    px-4 py-2.5 font-medium transition
+    relative px-4 py-2.5 font-medium transition
     focus:outline-none focus:ring-2 focus:ring-offset-1
     disabled:opacity-70 disabled:cursor-not-allowed
   `;
@@ -76,15 +100,34 @@ export default function Button({
     <button
       className={`
         ${base}
-        ${disabled ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-0' : variants[variant]}
+        ${isDisabled && !loading ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-0' : variants[variant]}
         ${roundedClasses[rounded]}
         ${fullWidth ? 'w-full' : ''}
         ${className}
       `}
-      disabled={disabled}
+      disabled={isDisabled}
       {...props}
     >
-      {children}
+      {/* Children an di khi loading nhung van giu chiem khong gian (giu width) */}
+      <span className={loading ? 'invisible' : undefined}>
+        {children}
+      </span>
+
+      {/* Overlay spinner nam o giua tuyet doi, khong anh huong width */}
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center gap-2" aria-hidden="true">
+          <Loading
+            size="sm"
+            variant="spinner"
+            color={spinnerColorMap[variant]}
+          />
+          {loadingText && (
+            <span className="text-sm font-medium" style={{ color: spinnerColorMap[variant] }}>
+              {loadingText}
+            </span>
+          )}
+        </span>
+      )}
     </button>
   );
 }
